@@ -1,0 +1,48 @@
+Samen Analyseren tool
+De Samen Analyseren Tool is door het RIVM ontwikkeld voor het downloaden en analyseren van sensordata. Daarnaast kun je met deze tool de sensordata eenvoudig combineren met (ongevalideerde) referentiemeetdata van het Landelijk Luchtmeetnet en met de weergegevens van het KNMI. De tool maakt gebruik van het R package openair en wordt geheel open source aangeboden. Zie onderaan deze pagina de verschillende links.
+
+
+Data
+De sensordata is afkomstig uit de Samen Meten database. De getoonde waarden geven een indicatie van de fijnstofconcentratie op een specifieke locatie. De data is niet geschikt om te toetsen aan de Europese grenswaarden. Elke sensor kan worden vergeleken met een meetstation van het Luchtmeetnet. De windgegevens voor het berekenen van de windroos komen van een weerstation van het KNMI. KNMI-gegevens komen vanaf knmi.nl, de referentiemeetwaarden van luchtmeetnet.nl en de sensormetingen van Samen Meten. De meetwaarden van luchtmeetnet zijn ongevalideerde gegevens. Meer informatie bij het luchtmeetnet zelf (zie link onderaan). De locaties van de gebruikte Luchtmeetnet- en weerstations worden met icoontjes op de kaart getoond. In het tabblad 'Kiezen' kun je de data van de sensoren van een project of gemeente, met daarbij de dichtstbijzijndste stations van het Luchtmeetnet en van het KNMI laden. Deze gegevens worden via API's bij de desbetreffende partij opgevraagd. Het opvragen en ophalen van de gegevens kan enige tijd duren. De gegevens worden in de tool opgeslagen, waardoor alleen de eerste keer het downloaden enige tijd duurt. De volgende keren en voor andere gebruikers zijn de gegevens snel beschikbaar.
+
+
+Gekalibreerde waarden
+De gedownloade data bevat ruwe én gekalibreerde data. Details over de kalibratieprocedure zijn te vinden op het Samen Meten Kennisportaal. De kalibratie van sensordata wordt gedaan met behulp van secundaire data die niet altijd beschikbaar zijn. Het kan daarom voorkomen dat voor sommige tijdsperioden geen gekalibreerde waarden in de database aanwezig zijn. We krijgen steeds meer begrip van situaties waarin de sensoren – ook na kalibratie – minder betrouwbare waarden geven. Dit zijn bijvoorbeeld situaties met zeer hoge luchtvochtigheid (vanaf 97 à 98% zoals gemeten op KNMI stations). Met name in de wintermaanden in de nacht en vroege ochtend kan de luchtvochtigheid zeer hoog kan zijn. Daarnaast kan het zijn dat deze sensoren altijd of vaak afwijken van de patronen die andere sensoren laten zien. Het is op dit moment nog niet mogelijk om de meetwaarden van deze uren of sensoren uit de gegevens te filteren. Daar werken we wel aan.
+
+
+Onzekerheidsbanden voor meetonzekerheid sensoren
+(Goedkope) Sensoren hebben een meetonzekerheid; elke sensor meet net een beetje anders o.a. door verschil in fabricage of verschil in wel/geen ventilator. Als je meerdere sensoren samen bekijkt, verklein je deze onzekerheid. We willen de meetonzekerheid ook in de Samen Analyseren Tool laten zien. Hieronder kun je lezen met welke simpele procedure we de meetonzekerheid bepaald hebben.
+
+Een eerste stap in het vergroten van de betrouwbaarheid van de sensormeting is het uitvoeren van een kalibratie (zie verwijzing bij de links). Hiermee kunnen we een deel van de meetfout weghalen. Dat gaat dan bijvoorbeeld om de meetfout die veroorzaakt wordt door een hoge luchtvochtigheid. In de Samen Analyseren Tool kun je het verschil tussen ruwe en gekalibreerde sensormetingen zien als een lichtgekleurde band om de meetwaardes heen. Er blijft een meetonzekerheid over voor de gekalibreerde waardes, bijvoorbeeld omdat alle sensoren een klein beetje anders reageren op de hoeveelheid fijnstof in de lucht. Deze onzekerheid hebben we geschat.
+
+De meetonzekerheid van een sensor is geschat op 20% van de meetwaarde. Als de meetwaardes heel laag zijn wordt 20% daarvan ook heel klein, daarom hebben we ook een minimale onzekerheid geschat van 5,3 μg/m³ voor pm2,5 en 8,5 μg/m³ voor pm10 (zie verwijzing bij de links). Deze geschatte onzekerheid kun je zien als een betrouwbaarheidsband om de meetwaardes. In ongeveer 19 uit 20 gevallen zal de werkelijke concentratie in deze band vallen.
+
+We kunnen de concentraties ook betrouwbaarder maken door meerdere sensoren bij elkaar te nemen en te middelen. We nemen dan wel aan dat alle sensoren in de groep ook aan dezelfde concentraties zijn blootgesteld. Wanneer je zo meerdere sensoren groepeert, dan geeft dit groepsgemiddelde een betrouwbaardere concentratie dan de individuele sensoren. In grote lijnen, hoe meer sensormetingen je middelt, hoe kleiner de meetonzekerheid van dit gemiddelde is. De betrouwbaarheidsband voor de groepsgemiddeldes is berekend op de standaard manier. Namelijk, door de gemiddelde onzekerheid van een individuele sensoren te delen door de wortel van het aantal sensoren in de groep. Ook hierbij is de minimale onzekerheid aangehouden.
+
+
+Filteren op maximale waarde
+Elke meetwaarde die de sensor doorgeeft kan informatie geven over de luchtkwaliteit van die plek. Echter, wanneer de sensor vies of beschadigd is, is de meetwaarde niet representatief voor de luchtkwaliteit. Vaak zijn dat dan hoge waardes van bijvoorbeeld 300. Voor de analyse wil je graag de luchtkwaliteit bekijken, zonder dat deze verstoord wordt door deze hoge waardes. Daarvoor kun je een filter zetten, de waarde lager dan deze waarde worden niet meegenomen voor de rest van de analyse. Standaard staat de maximale waarde 100 μg/m³. Je kunt ook zelf het filter instellen, zo kun je ook de hoge waardes van een sensor bekijken. Zet de maximale dan bijvoorbeeld op 1000 μg/m³ en bekijk de sensoren één voor één.
+
+
+Spreidingsbalken voor variatie binnen een tijdsperiode
+Voor het maken van de figuren met het wekelijkse en dagelijkse patroon nemen we het gemiddelde van een groep sensoren over een bepaalde periode (een dag of een uur). Je kunt daarvan dan de standaarddeviatie bepalen, deze waarde zegt je iets over de spreiding van de meetwaardes. De spreiding is dus geen meetfout, maar geeft de variatie van de meetwaardes aan in de periode. De ene dag zijn de concentraties nu eenmaal hoger of lager dan de andere.
+
+Bijvoorbeeld op acht maandagen zijn de meetwaardes: 10, 2, 6, 8, 12, 12, 9, 13; op acht dinsdagen is er gemeten 20, 12, 16, 18, 36, 4, 9, 12. Op de dinsdagen liggen de waarden tussen 4 en de 36 en is de spreiding groter dan op de maandagen, want dan liggen de waarden tussen de 2 en de 13. Dit kun je in het figuur terugzien door een langere spreidingsbalk rond het gemiddelde. Het komt voor dat niet alle sensoren in de groep de hele periode gemeten hebben. Om daar rekening mee te houden is het aantal sensoren in de groep gebruikt als weegfactor voor het berekenen van het gemiddelde en de standaarddeviatie.
+
+De meetonzekerheden zijn in deze situatie voor de Samen Analyseren Tool minder belangrijk, want die zijn meestal veel kleiner dan het verschil van dag tot dag of uur tot uur. Daarom hoeven we voor deze figuren de meetonzekerheid niet mee te nemen.
+
+
+Opensource
+De broncode voor deze tool wordt geheel open source aangeboden via onze GitHub-pagina. Iedereen mag deze tool verder ontwikkelen of aanpassen, mits de aanpassingen weer open source beschikbaar komen.
+
+
+Links
+Real-time metingen van de sensoren kun je vinden op het Samen Meten Dataportaal: samenmeten.rivm.nl
+Meer informatie over de Samen Analyseren Tool: https://samenmeten.nl/dataportaal/samen-analyseren-tool
+Voor de code zie de GitHub-pagina: https://github.com/rivm-syso/Analyse-Together
+Real-time metingen van de referentiemeetstations kun je vinden op de Landelijk Luchtmeetnet website: luchtmeetnet.nl
+Meer informatie over de metingen van het KNMI kun je vinden op: knmi.nl
+Meer informatie over het openair-package kun je vinden op: https://davidcarslaw.github.io/openair/
+Voor meer informatie over de projecten zelf, zie onze website: samenmeten.nl/initiatieven
+Artikel over Boeren en Buren project: https://www.mdpi.com/1424-8220/22/20/8053
+Uitleg kalibratie: https://www.samenmeten.nl/dataportaal/kalibratie-van-fijnstofsensoren
