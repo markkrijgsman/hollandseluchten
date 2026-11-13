@@ -30,9 +30,14 @@ class FakeLLM:
         done = {use["name"]: res for use, res in turn}
 
         if turn and turn[-1][1].get("is_error"):
-            return _text(f"I could not get an answer: {turn[-1][1]['content']}")
+            last_use, last_res = turn[-1]
+            if "radius_km" not in last_use["input"] and "Error 404" in last_res["content"]:
+                return _call(last_use["name"], {**last_use["input"], "radius_km": 15.0})
+            return _text(f"I could not get an answer: {last_res['content']}")
         if turn and turn[-1][0]["name"] not in ("geocode", "stations"):
-            return _text(_answer(turn[-1][0]["name"], json.loads(turn[-1][1]["content"])))
+            note = " ".join(c["message"] for c in json.loads(done["geocode"]["content"]).get("considerations", [])
+                            ) if "geocode" in done else ""
+            return _text(" ".join(filter(None, [_answer(turn[-1][0]["name"], json.loads(turn[-1][1]["content"])), note])))
 
         # where?
         place = next((p for p in PLACE.findall(question) if p.lower() not in MONTHS), None)
@@ -56,7 +61,10 @@ class FakeLLM:
         if period is None and "stations" in done:  # no period given: latest day any nearby station has data
             stations = json.loads(done["stations"]["content"])["stations"]
             if not stations:
-                return _text("There are no measuring stations within 5 km of that location.")
+                last_st_use = next(u for u, _ in reversed(turn) if u["name"] == "stations")
+                if "radius_km" not in last_st_use["input"]:
+                    return _call("stations", {**last_st_use["input"], "radius_km": 15.0})
+                return _text("There are no measuring stations within 15 km of that location.")
             last_day = date.fromisoformat(max(st["data_to"] for st in stations))
             period = (last_day, last_day)
         if period is None:
@@ -111,7 +119,8 @@ def _call(name: str, args: dict) -> dict:
 
 
 def _answer(tool: str, r: dict) -> str:
-    lim = r["limitations"][0] if r.get("limitations") else ""
+    notes = [c["message"] for c in r.get("considerations", []) if c["level"] != "info"]
+    lim = " ".join(notes) or (r["limitations"][0] if r.get("limitations") else "")
     if tool == "pm25":
         basis = "Hollandse Luchten sensors" if r["basis"] == "sensors" else "official Luchtmeetnet stations"
         return (f"On {r['date']} the PM2.5 level near this location was about {r['pm25']} µg/m³ "

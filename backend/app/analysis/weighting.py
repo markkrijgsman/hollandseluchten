@@ -6,6 +6,7 @@ distance_km (plus weight and share once `add_weights` has run).
 import pandas as pd
 
 from .constants import MIN_DISTANCE_KM, SENSOR, SENSOR_PREFIX
+from .models import StationEstimate
 from .periods import Resolution
 
 
@@ -49,10 +50,11 @@ def preferred(est: pd.DataFrame) -> pd.DataFrame:
             .set_index("period").drop(columns="is_reference"))
 
 
-def station_breakdown(per_kind: pd.DataFrame) -> list[dict]:
+def station_breakdown(per_kind: pd.DataFrame) -> list[StationEstimate]:
     """Per-station details of one (period, kind) group, nearest first."""
     rows = per_kind.reset_index().sort_values("distance_km")
-    return [{"id": r.station.removeprefix(SENSOR_PREFIX), "name": r.name, "distance_km": round(float(r.distance_km), 2),
-             "weight": round(float(r.share), 3), "daily_mean": round(float(r.mean), 2),
-             "uncertainty": round(float(r.sd), 2), "valid_hours": int(r.hours)}
+    return [StationEstimate(id=r.station.removeprefix(SENSOR_PREFIX), name=r.name,
+                            distance_km=round(float(r.distance_km), 2), weight=round(float(r.share), 3),
+                            daily_mean=round(float(r.mean), 2), uncertainty=round(float(r.sd), 2),
+                            valid_hours=int(r.hours))
             for r in rows.itertuples()]

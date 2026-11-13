@@ -1,0 +1,204 @@
+# Considerations: notes shown with a result, derived from what happened in the run (see app/analysis/facts.py).
+# Edit wording and thresholds here; restart the API afterwards. Override the file with HL_CONSIDERATIONS_FILE.
+#
+# code     stable identifier; clients can use it to word the note in their own language
+# level    info | caution | warning
+# origin   where the underlying choice comes from:
+#            analyse-together  the validated tool (its function or default)
+#            this-api          a choice made in this API; thresholds below are our own judgement, not validated
+#            config            another config file (config/guidelines.toml)
+# scope    run (default): about the whole result; level: once per reference level in /pm25/compare;
+#          place: about a geocoded place name
+# when     all conditions must hold: { fact, op, value }. No conditions: always. Missing facts: rule is skipped.
+# message  {fact} and {fact:format} placeholders are filled from the facts, which are also returned with the note.
+
+[[rule]]
+code = "estimate_not_measurement"
+level = "info"
+origin = "this-api"
+message = "A weighted mean of nearby stations is an estimate, not a measurement at your coordinate."
+
+[[rule]]
+code = "daily_mean"
+level = "info"
+origin = "this-api"
+when = [{ fact = "single_period", op = "==", value = true }, { fact = "resolution", op = "==", value = "day" }]
+message = "Daily mean of hourly values; PM2.5 on a different day or hour can differ a lot."
+
+[[rule]]
+code = "sensor_uncertainty"
+level = "info"
+origin = "analyse-together"
+when = [{ fact = "sensor_periods", op = ">", value = 0 }]
+message = "Uncertainty of sensors is a fixed estimate ({sensor_uncertainty_percent:g}%, min {sensor_uncertainty_min:g} ug/m3) and is not reduced by averaging."
+
+[[rule]]
+code = "outlier_cutoff"
+level = "info"
+origin = "analyse-together"
+message = "Hourly values of {outlier_cutoff:g} ug/m3 or more are removed as outliers. This is the default of the Analyse-Together tool; it was not tuned for this data, and lower faulty readings are not detected."
+
+[[rule]]
+code = "outliers_removed"
+level = "info"
+origin = "analyse-together"
+when = [{ fact = "outliers_removed", op = ">", value = 0 }]
+message = "{outliers_removed} of {hourly_values_in} hourly values ({outlier_share:.1%}) were removed as outliers."
+
+[[rule]]
+code = "many_outliers"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "outlier_share", op = ">", value = 0.05 }]
+message = "More than 5% of the hourly values were removed as outliers ({outlier_share:.1%}). The nearby stations may be unreliable in this period."
+
+[[rule]]
+code = "sparse_stations_left_out"
+level = "info"
+origin = "this-api"
+when = [{ fact = "stations_excluded", op = ">", value = 0 }]
+message = "{stations_excluded} station-period(s) with fewer than {required_hours} valid hours were left out."
+
+[[rule]]
+code = "no_sensor_data_configured"
+level = "info"
+origin = "this-api"
+when = [{ fact = "sensors_configured", op = "==", value = false }]
+message = "No sensor data used: estimate is based on official stations only."
+
+[[rule]]
+code = "reference_fallback"
+level = "info"
+origin = "this-api"
+when = [{ fact = "sensors_configured", op = "==", value = true }, { fact = "sensor_periods", op = "==", value = 0 }]
+message = "No sensor had enough data near this point, so the estimate is based on official stations only."
+
+[[rule]]
+code = "mixed_basis"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "sensor_periods", op = ">", value = 0 }, { fact = "periods_on_reference", op = ">", value = 0 }]
+message = "{periods_on_reference} of {periods} periods use official stations because no sensor had enough data; the basis changes over the series."
+
+[[rule]]
+code = "periods_without_data"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "periods_without_data", op = ">", value = 0 }]
+message = "{periods_without_data} of {periods_expected} periods have no usable data."
+
+[[rule]]
+code = "summary_mean"
+level = "info"
+origin = "this-api"
+when = [{ fact = "single_period", op = "==", value = false }]
+message = "The summary mean is the plain mean of the periods that have data; periods without data are skipped."
+
+[[rule]]
+code = "single_station"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "min_stations", op = "==", value = 1 }]
+message = "At least one period rests on a single station ({basis}), so there is nothing to average out a local deviation."
+
+[[rule]]
+code = "dominant_station"
+level = "info"
+origin = "this-api"
+when = [{ fact = "min_stations", op = ">", value = 1 }, { fact = "max_share", op = ">=", value = 0.7 }]
+message = "One station carries {max_share:.0%} of the weight, so the result mostly reflects that station."
+
+[[rule]]
+code = "far_from_stations"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "nearest_km", op = ">", value = 2 }]
+message = "The nearest station used is {nearest_km:.1f} km away; local differences such as traffic are not captured."
+
+[[rule]]
+code = "high_relative_uncertainty"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "uncertainty_ratio", op = ">", value = 0.3 }]
+message = "The uncertainty is on average {uncertainty_ratio:.0%} of the value."
+
+# --- per reference level (/pm25/compare) ---
+
+[[rule]]
+code = "level_not_verified"
+scope = "level"
+level = "caution"
+origin = "config"
+when = [{ fact = "level_verified", op = "==", value = false }]
+message = "'{level_name}' ({level_limit:g} ug/m3) has not been checked against its source text."
+
+[[rule]]
+code = "partial_year"
+scope = "level"
+level = "info"
+origin = "this-api"
+when = [{ fact = "level_type", op = "==", value = "annual" }, { fact = "period_days", op = "<", value = 300 }]
+message = "'{level_name}' is defined for a full year; your period is {period_days} days, so this is only indicative."
+
+[[rule]]
+code = "annual_within_uncertainty"
+scope = "level"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "level_uncertain", op = "==", value = true }]
+message = "The period mean ({period_mean:g} ug/m3, uncertainty {mean_uncertainty:g}) is within its uncertainty of '{level_name}' ({level_limit:g}): it cannot be said whether the level is exceeded."
+
+[[rule]]
+code = "daily_within_uncertainty"
+scope = "level"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "ambiguous_days", op = ">", value = 0 }]
+message = "On {ambiguous_days} of {days_with_data} days the uncertainty range contains '{level_name}' ({level_limit:g}): it cannot be said whether those days exceeded it."
+
+# --- station type (official stations only) ---
+
+[[rule]]
+code = "traffic_station_used"
+level = "info"
+origin = "this-api"
+when = [{ fact = "traffic_weight_share", op = ">", value = 0 }, { fact = "traffic_weight_share", op = "<", value = 0.5 }]
+message = "A traffic station is part of the estimate ({traffic_weight_share:.0%} of the weight). Traffic stations measure near busy roads and can read higher than the surrounding area."
+
+[[rule]]
+code = "traffic_station_dominates"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "traffic_weight_share", op = ">=", value = 0.5 }]
+message = "Traffic stations carry {traffic_weight_share:.0%} of the weight. They measure near busy roads, so the estimate can be higher than the surrounding area. Stations are not weighted by type."
+
+[[rule]]
+code = "industry_station_used"
+level = "info"
+origin = "this-api"
+when = [{ fact = "industry_weight_share", op = ">", value = 0 }, { fact = "industry_weight_share", op = "<", value = 0.5 }]
+message = "An industrial station is part of the estimate ({industry_weight_share:.0%} of the weight); its readings can be influenced by nearby industry."
+
+[[rule]]
+code = "industry_station_dominates"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "industry_weight_share", op = ">=", value = 0.5 }]
+message = "Industrial stations carry {industry_weight_share:.0%} of the weight, so the estimate can be influenced by nearby industry. Stations are not weighted by type."
+
+[[rule]]
+code = "sensor_type_unknown"
+level = "info"
+origin = "this-api"
+when = [{ fact = "sensor_periods", op = ">", value = 0 }]
+message = "The sensor kits have no station type (traffic, industry or background), so local sources near a kit are not accounted for."
+
+# --- geocoded place ---
+
+[[rule]]
+code = "ambiguous_place"
+scope = "place"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "place_candidates", op = ">", value = 1 }]
+message = "'{place_query}' matched {place_candidates} places. The first match, '{place_chosen}', was used; other matches: {place_alternatives}."

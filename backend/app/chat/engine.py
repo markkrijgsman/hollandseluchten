@@ -1,22 +1,31 @@
-"""Chat layer: a question goes to an LLM that can only call the analysis tools; the server runs them.
+"""Chat layer: a question goes to an LLM agent that can only call the analysis tools; the server runs them.
 
 The LLM never computes numbers. Every tool call and its full result (with audit) is returned to the client.
 Stateless: the client sends `history` back with each request.
 """
-import json
+from __future__ import annotations
+
 from datetime import date
 from typing import Any
 
-from pydantic import BaseModel, ValidationError
+from langchain.agents import create_agent
+from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    ToolMessage,
+    messages_from_dict,
+    messages_to_dict,
+)
+from langgraph.errors import GraphRecursionError
+from pydantic import BaseModel
 
 from ..analysis.service import Pm25Service
-from ..tools.registry import TOOLS, ToolError, execute
-from .llm import LLM
 from .prompt import SYSTEM_PROMPT
+from .tools import build_tools
 
-MAX_STEPS = 6
-MAX_MODEL_SERIES_POINTS = 31
-
+MAX_STEPS = 6  # model calls per question
 
 
 class ChatRequest(BaseModel):
@@ -24,74 +33,76 @@ class ChatRequest(BaseModel):
     history: list[dict[str, Any]] = []
 
 
-def tool_specs() -> list[dict]:
-    return [{"name": t.name, "description": t.description,
-             "input_schema": t.model.model_json_schema(by_alias=True)} for t in TOOLS.values()]
-
-
-def _for_model(envelope: dict) -> dict:
-    """What the LLM sees: no audit, and long series replaced by the summary (the client gets everything)."""
-    out = {k: v for k, v in envelope.items() if k != "audit"}
-    series = out.get("series")
-    if series and len(series) > MAX_MODEL_SERIES_POINTS:
-        out["series"] = f"{len(series)} points omitted; use summary"
+def _load_history(history: list[dict]) -> list[BaseMessage]:
+    """Accepts what this API returned, or plain {role, content} turns."""
+    out: list[BaseMessage] = []
+    for h in history:
+        if "type" in h:
+            out += messages_from_dict([h])
+        elif h.get("role") in ("user", "assistant"):
+            out.append((HumanMessage if h["role"] == "user" else AIMessage)(content=h["content"]))
     return out
 
 
-def _run_tool(service: Pm25Service, name: str, args: dict) -> tuple[dict | None, str]:
-    """Returns (full envelope or None, text for the model)."""
-    tool = TOOLS.get(name)
-    if tool is None:
-        return None, f"Unknown tool '{name}'"
-    try:
-        params = tool.model.model_validate(args)
-    except ValidationError as exc:
-        return None, "Invalid input: " + "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
-    try:
-        envelope = execute(service, tool, params)
-    except ToolError as exc:
-        detail = exc.detail["message"] if isinstance(exc.detail, dict) else exc.detail
-        return None, f"Error {exc.status}: {detail}"
-    return envelope, json.dumps(_for_model(envelope), default=str)
+def _text(message: BaseMessage) -> str:
+    c = message.content
+    return c if isinstance(c, str) else "".join(b.get("text", "") for b in c if isinstance(b, dict))
 
 
-def chat(service: Pm25Service, llm: LLM, req: ChatRequest) -> dict:
-    messages = [*req.history, {"role": "user", "content": req.message}]
-    system = SYSTEM_PROMPT.format(today=date.today().isoformat())
-    tools = tool_specs()
-    interpretation, results, finished = [], [], False
-    for _ in range(MAX_STEPS):
-        content = llm.create(system=system, messages=messages, tools=tools)["content"]
-        messages.append({"role": "assistant", "content": content})
-        uses = [b for b in content if b["type"] == "tool_use"]
-        if not uses:
-            finished = True
-            break
-        blocks = []
-        for use in uses:
-            envelope, text = _run_tool(service, use["name"], use["input"])
-            call = {"tool": use["name"], "input": use["input"]}
-            if envelope:
-                results.append(envelope)
-                call["reproduce"] = envelope["reproduce"]
+def chat(service: Pm25Service, model: BaseChatModel, req: ChatRequest) -> dict:
+    prior = _load_history(req.history)
+    agent = create_agent(model, build_tools(service), system_prompt=SYSTEM_PROMPT.format(today=date.today().isoformat()))
+    state = {"messages": [*prior, HumanMessage(req.message)]}
+    try:
+        messages = agent.invoke(state, {"recursion_limit": 2 * MAX_STEPS + 1})["messages"]
+        finished = True
+    except GraphRecursionError:
+        messages, finished = state["messages"], False
+
+    new = messages[len(prior):]
+    replies = {m.tool_call_id: m for m in new if isinstance(m, ToolMessage)}
+    interpretation, results = [], []
+    for m in new:
+        for call in (m.tool_calls if isinstance(m, AIMessage) else []):
+            entry = {"tool": call["name"], "input": call["args"]}
+            reply = replies.get(call["id"])
+            if reply is not None and reply.artifact:
+                results.append(reply.artifact)
+                entry["reproduce"] = reply.artifact["reproduce"]
             else:
-                call["error"] = text
-            interpretation.append(call)
-            blocks.append({"type": "tool_result", "tool_use_id": use["id"], "content": text,
-                           **({} if envelope else {"is_error": True})})
-        messages.append({"role": "user", "content": blocks})
-    answer = "".join(b["text"] for b in messages[-1]["content"] if b["type"] == "text") if finished else ""
+                entry["error"] = str(reply.content) if reply is not None else "no result"
+            interpretation.append(entry)
+
+    _carry_place_notes(results)
+
+    last = new[-1] if new else None
+    answer = _text(last) if finished and isinstance(last, AIMessage) and not last.tool_calls else ""
     if not answer:
         answer = "I could not complete this analysis. Please rephrase or narrow the question."
-    called_tools = {c["tool"] for c in interpretation if "error" not in c}
+    called = {c["tool"] for c in interpretation if "error" not in c}
     return {
         "answer": answer,
         # no analysis ran and the model replied: it is asking the resident something
-        "clarifying_question": answer if finished and not results else None,
+        "clarifying_question": answer if finished and not results and not interpretation else None,
         "interpretation": interpretation, "results": results,
-        "suggestions": _suggestions(called_tools),
-        "llm": llm.name, "history": messages,
+        "suggestions": _suggestions(called),
+        "llm": getattr(model, "model_name", None) or type(model).__name__,
+        "history": messages_to_dict([_without_artifact(m) for m in messages]),
     }
+
+
+def _carry_place_notes(results: list[dict]) -> None:
+    """Notes about the place the chat picked (e.g. several matches) belong with the analyses that used it."""
+    notes = [c for r in results if "chosen" in r for c in r["considerations"]]
+    for r in results:
+        if notes and "chosen" not in r and "considerations" in r:
+            r["considerations"] = [*notes, *r["considerations"]]
+            r["limitations"] = [c["message"] for c in r["considerations"]]
+
+
+def _without_artifact(m: BaseMessage) -> BaseMessage:
+    """The full results go to the client once in `results`; they are not resent with every follow-up."""
+    return m.model_copy(update={"artifact": None}) if isinstance(m, ToolMessage) else m
 
 
 def _suggestions(called: set[str]) -> list[str]:

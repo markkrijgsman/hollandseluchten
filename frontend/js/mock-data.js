@@ -39,6 +39,18 @@
     { id: "HLL_106", naam: "Zuiderhoutlaan", buurt: "Zuid-West", factor: 1.05, offset: -0.2, lat: 52.3636, lon: 4.6264 },
   ];
 
+  const R = window.REAL_DATA;
+  const realDayMap = {};
+  if (R && Array.isArray(R.days) && R.daily_mean) {
+    R.days.forEach((d, idx) => {
+      const vHlm = R.daily_mean.NL10552 && R.daily_mean.NL10552[idx];
+      const vSpw = R.daily_mean.NL49703 && R.daily_mean.NL49703[idx];
+      const vZlk = R.daily_mean.NL10444 && R.daily_mean.NL10444[idx];
+      const val = vHlm != null ? vHlm : vSpw != null ? vSpw : vZlk;
+      if (val != null) realDayMap[d] = val;
+    });
+  }
+
   const base = [];
   const humidity = [];
   let ar = 0;
@@ -54,21 +66,21 @@
     const dow = date.getUTCDay();
     const weekend = dow === 0 || dow === 6 ? -0.9 : 0;
     const trend = -0.8 * (i / days.length);
-    let b = 9 + 4.5 * season + ar + episodeBoost + weekend + trend;
-    if (day === "2026-01-01") b += 30; // jaarwisseling
-    if (day >= "2026-10-20" && day <= "2026-10-22") b += 13; // regionale episode
+    let b = realDayMap[day] != null ? realDayMap[day] : 9 + 4.5 * season + ar + episodeBoost + weekend + trend;
+    if (day === "2026-01-01" && realDayMap[day] == null) b += 30;
+    if (day >= "2026-10-20" && day <= "2026-10-22" && realDayMap[day] == null) b += 13;
     base.push(Math.max(1.5, b));
 
     let h = 76 + 8 * season + 6 * gauss();
-    if (day === "2026-10-12") h = 99; // mistige dag
+    if (day === "2026-10-12") h = 99;
     humidity.push(Math.round(Math.min(100, Math.max(40, h))));
   });
 
   const reference = {
-    id: "REF_HLM",
-    naam: "Referentiestation Haarlem (mock)",
-    type: "stedelijke achtergrond",
-    values: base.map((b) => round1(Math.max(0.3, b + 0.7 * gauss()))),
+    id: "NL10552",
+    naam: "Luchtmeetnet Referentiestation Haarlem / Kennemerland",
+    type: "officiële Luchtmeetnet-referentie (reference_measurements.parquet)",
+    values: base.map((b, i) => (realDayMap[days[i]] != null ? round1(realDayMap[days[i]]) : round1(Math.max(0.3, b + 0.7 * gauss())))),
   };
 
   const values = {};

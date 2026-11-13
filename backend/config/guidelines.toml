@@ -29,4 +29,10 @@ limit = 25
 source = "https://environment.ec.europa.eu/topics/air/air-quality/eu-air-quality-standards_en"
 verified = true
 
-# TODO: add the PM2.5 limits that Directive (EU) 2024/2881 applies from 2030 once checked against the directive text.
+[[levels.eu2030]]
+id = "eu_2024_annual"
+name = "EU limit value (Directive 2024/2881), annual mean (applies from 2030)"
+type = "annual"
+limit = 10
+source = "Directive (EU) 2024/2881"
+verified = false

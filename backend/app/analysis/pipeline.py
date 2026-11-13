@@ -5,8 +5,9 @@ from datetime import date as Date
 import pandas as pd
 
 from . import weighting
-from .audit import AuditLog
+from .audit import AuditLog, StationMeansStep
 from .errors import NoDataError
+from .facts import means_facts, result_facts
 from .observations import ObservationLoader
 from .periods import RESOLUTIONS, period_label
 
@@ -17,6 +18,7 @@ class WeightedResult:
     estimates: pd.DataFrame    # per (period, kind)
     chosen: pd.DataFrame       # per period: sensors where available, else reference
     r_parameters: dict
+    facts: dict                # what happened in this run; input for the considerations
 
 
 class Pipeline:
@@ -30,13 +32,19 @@ class Pipeline:
 
         required = res.required_hours(min_hours)
         per, excluded = weighting.drop_sparse(weighting.station_means(obs.hourly, obs.stations, res), required)
-        detail = {"station_periods_used": len(per), "station_periods_excluded_for_too_few_hours": len(excluded)}
-        if start == end:  # one period: say which stations were left out
-            detail["excluded_for_too_few_hours"] = {s: int(h) for s, h in excluded["hours"].droplevel("period").items()}
-        audit.log(f"{res.label} mean per station", **detail)
+        # one period: say which stations were left out
+        left_out = ({s: int(h) for s, h in excluded["hours"].droplevel("period").items()} if start == end else None)
+        means = means_facts(per, excluded, required)
+        audit.log(StationMeansStep(action=f"{res.label} mean per station",
+                                   station_periods_used=means["station_periods_used"],
+                                   station_periods_excluded_for_too_few_hours=means["stations_excluded"],
+                                   excluded_for_too_few_hours=left_out))
         if per.empty:
-            raise NoDataError(f"No station has >= {required} valid hours for {period_label(start, end)}", audit.steps)
+            raise NoDataError(f"No station has >= {required} valid hours for {period_label(start, end)}",
+                              audit.as_dicts())
 
         per = weighting.add_weights(per)
         est = weighting.estimates(per)
-        return WeightedResult(per, est, weighting.preferred(est), obs.r_parameters)
+        chosen = weighting.preferred(est)
+        facts = {**obs.facts, **means, **result_facts(per, chosen, res, start, end)}
+        return WeightedResult(per, est, chosen, obs.r_parameters, facts)

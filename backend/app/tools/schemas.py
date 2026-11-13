@@ -68,6 +68,34 @@ class CompareRequest(RangeRequest):
         return self
 
 
+class WeekdayRequest(RangeRequest):
+    """Compare PM2.5 on weekdays (Mon–Fri) versus weekend days (Sat–Sun) over a period (max 366 days)."""
+
+    @model_validator(mode="after")
+    def _length(self):
+        self.check_length("day")
+        return self
+
+
+class TrendRequest(RangeRequest):
+    """PM2.5 trend (slope per day) over a period (max 366 days): is air quality improving or worsening?"""
+
+    @model_validator(mode="after")
+    def _length(self):
+        self.check_length("day")
+        return self
+
+
+class EventsRequest(RangeRequest):
+    """Days with PM2.5 above a threshold in a date range (max 366 days)."""
+    threshold: float = Field(15.0, gt=0, description="Days with PM2.5 >= threshold are reported as events (ug/m3)")
+
+    @model_validator(mode="after")
+    def _length(self):
+        self.check_length("day")
+        return self
+
+
 class StationsRequest(PointRequest):
     """List the measuring stations near a coordinate and the period they have data."""
 

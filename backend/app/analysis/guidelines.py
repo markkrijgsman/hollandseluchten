@@ -1,7 +1,13 @@
 """Air-quality reference levels for /pm25/compare, read from config/guidelines.toml."""
+from __future__ import annotations
+
 import os
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 DEFAULT_FILE = Path(__file__).resolve().parents[2] / "config" / "guidelines.toml"
 REQUIRED = {"id", "name", "type", "limit", "source", "verified"}

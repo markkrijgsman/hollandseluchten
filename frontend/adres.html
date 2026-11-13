@@ -89,6 +89,21 @@
           Je locatie of postcode wordt alleen gebruikt om het dichtstbijzijnde meetpunt te vinden en wordt nooit opgeslagen.
         </p>
         <p class="form-error" id="form-error" role="alert" aria-live="polite" hidden></p>
+
+        <div class="period-row" id="search-period-row">
+          <span class="muted small" id="search-period-label">Periode:</span>
+          <select id="search-period" class="select" aria-labelledby="search-period-label"></select>
+          <span id="search-period-info" class="muted small"></span>
+        </div>
+        <div id="search-custom-row" hidden>
+          <form id="search-range-form" class="custom-range" novalidate>
+            <label id="search-from-label"><span>Van</span><input type="date" id="search-from" min="2020-01-01" max="2026-09-30" required></label>
+            <label id="search-to-label"><span>Tot en met</span><input type="date" id="search-to" min="2020-01-01" max="2026-09-30" required></label>
+            <button type="submit" id="search-apply" class="btn-outline">Toepassen</button>
+            <span class="form-error" id="search-range-error" role="alert" aria-live="polite" hidden></span>
+          </form>
+        </div>
+
         <div class="examples">
           <span class="muted small" data-i18n="form.try">Of kies een voorbeeld:</span>
           <button type="button" class="chip" data-pc="2011RD" data-nr="2">Grote Markt 2, Haarlem</button>
@@ -108,7 +123,10 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBSotcK_P9raZBxR6EbkJOi7A1FXlvT2UQ"></script>
+    <script src="https://unpkg.com/leaflet.gridlayer.googlemutant@0.14.0/dist/Leaflet.GoogleMutant.js"></script>
     <script src="js/i18n.js"></script>
+    <script src="js/real-data.js"></script>
     <script src="js/mock-data.js"></script>
     <script src="js/analysis.js"></script>
     <script src="js/charts.js"></script>

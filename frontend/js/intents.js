@@ -17,6 +17,10 @@
       "Goedkope sensoren overschatten PM2.5, vooral bij pieken en hoge luchtvochtigheid. Gebruik de sensorgetallen niet om te toetsen aan WHO- of EU-normen; gebruik daarvoor het officiële meetstation.",
       "Low-cost sensors overestimate PM2.5, especially during peaks and high humidity. Do not check sensor numbers against WHO or EU limits; use the official monitoring station for that."
     ),
+    humidity: (pct) => t(
+      `De gemiddelde luchtvochtigheid in deze periode was ${pct}%. Bij hoge vochtigheid zien goedkope sensoren waterdruppeltjes als fijnstof, waardoor de PM2.5-waarden worden overschat. Vergelijk altijd met het officiële meetstation.`,
+      `Average humidity during this period was ${pct}%. At high humidity, low-cost sensors can mistake water droplets for particulate matter, inflating the PM2.5 readings. Always compare with the official monitoring station.`
+    ),
     regional: () => t(
       "PM2.5 verspreidt zich over grote afstanden; een groot deel komt van buiten de stad of uit het buitenland. Verschillen van een paar µg/m³ tussen plekken zijn moeilijk te duiden.",
       "PM2.5 travels long distances; a large share comes from outside the city or from abroad. Differences of a few µg/m³ between places are hard to interpret."
@@ -31,7 +35,19 @@
     ),
   };
 
-  const NORMS = { who: 5, eu2030: 10, euNow: 25 };
+  function addAbsoluteCaveat(hum, ctx) {
+    if (Array.isArray(hum) && hum.length > 0) {
+      const mean = Math.round(hum.reduce((s, v) => s + v, 0) / hum.length);
+      if (mean > 80) {
+        ctx.caveat(caveat.humidity(mean));
+        return;
+      }
+    }
+    ctx.caveat(caveat.absolute());
+  }
+
+  let NORMS = { who: 5, eu2030: 10, euNow: 25 };
+  document.addEventListener("hl:norms", (e) => { Object.assign(NORMS, e.detail); });
 
   const health = () => t(
     "Er is geen acuut gevaar. Fijnstof is vooral ongezond als je er jarenlang aan blootstaat, en er is geen grens waaronder het helemaal onschadelijk is: hoe lager, hoe beter. Mensen met astma of COPD merken vieze dagen soms wel direct.",
@@ -218,7 +234,7 @@
         )}</p>`;
       }
       ctx.caveat(caveat.season());
-      ctx.caveat(caveat.absolute());
+      addAbsoluteCaveat(d.hum, ctx);
       return {
         short: t(
           `In ${p2.label} was fijnstof gemiddeld ${fmt(Math.abs(diff))} µg/m³ ${higher ? "hoger" : "lager"} dan in ${p1.label}.`,
@@ -251,7 +267,7 @@
         rows.map((r) => `${r.id}: ${fmt(r.mean)}`).join(" · ")
       );
       ctx.caveat(caveat.regional());
-      ctx.caveat(caveat.absolute());
+      addAbsoluteCaveat(d.hum, ctx);
       if (reliable.length < 2) {
         return {
           short: t("Er zijn te weinig sensoren met genoeg data om een ranglijst te maken.", "There are too few sensors with enough data to make a ranking."),
@@ -309,7 +325,7 @@
         { periode: plan.period.label },
         t(`Sensoren gemiddeld ${fmt(netMean)} µg/m³ · referentie ${fmt(refMean)} µg/m³`, `Sensors average ${fmt(netMean)} µg/m³ · reference ${fmt(refMean)} µg/m³`)
       );
-      ctx.caveat(caveat.absolute());
+      addAbsoluteCaveat(d.hum, ctx);
 
       let wijk = "";
       if (plan.buurt) {
@@ -442,7 +458,7 @@
         flagged.map((e) => `${e.date}: ${kindLabel(e.kind)}`).join(" · ") || t("geen", "none"),
         "Aanvullend"
       );
-      ctx.caveat(caveat.absolute());
+      addAbsoluteCaveat(d.hum, ctx);
 
       const kindText = {
         regionaal: t("Ook het officiële meetstation meet verhoogd. Waarschijnlijk echte luchtvervuiling in de hele regio, bijvoorbeeld door weinig wind of aanvoer uit het buitenland.", "The official station is elevated too. Probably real air pollution across the region, for example from little wind or air arriving from abroad."),
@@ -547,7 +563,7 @@
         { grenswaarde: t(`${limit} µg/m³ (daggemiddelde)`, `${limit} µg/m³ (daily average)`) },
         t(`Meetstation: ${refOver} dagen · sensoren: ${netOver} dagen (van ${d.dates.length})`, `Station: ${refOver} days · sensors: ${netOver} days (of ${d.dates.length})`)
       );
-      ctx.caveat(caveat.absolute());
+      addAbsoluteCaveat(d.hum, ctx);
       ctx.caveat(t(
         "Het WHO-advies (2021) is 15 µg/m³ als daggemiddelde, dat maximaal 3–4 dagen per jaar overschreden mag worden, en 5 µg/m³ als jaargemiddelde.",
         "The WHO guideline (2021) is 15 µg/m³ as a daily average, to be exceeded on at most 3–4 days a year, and 5 µg/m³ as an annual average."
@@ -621,7 +637,7 @@
         "Een hoge R² betekent dat de sensor het patroon goed volgt, niet dat de getallen kloppen. Een sensor die steeds twee keer zo hoog meet kan ook een hoge R² hebben.",
         "A high R² means the sensor follows the pattern well, not that the numbers are right. A sensor that always reads twice as high can still have a high R²."
       ));
-      ctx.caveat(caveat.absolute());
+      addAbsoluteCaveat(d.hum, ctx);
       const table = `<table class="stats"><thead><tr><th>${t("Sensor", "Sensor")}</th><th>${t("Gemiddeld", "Average")}</th><th>${t("Verschil met meetstation", "Difference from station")}</th><th>${t("Verhouding", "Ratio")}</th><th>R²</th><th>${t("Data", "Data")}</th></tr></thead><tbody>${rows
         .map((r) => `<tr><td>${r.s.naam} <span class="muted">${r.id}</span></td><td>${fmt(r.mean)}</td><td>${r.diff >= 0 ? "+" : ""}${fmt(r.diff)} µg/m³</td><td>${fmt(r.ratio, 2)}×</td><td>${fmt(r.r2, 2)}</td><td>${pct(r.cov)}</td></tr>`)
         .join("")}</tbody></table>`;

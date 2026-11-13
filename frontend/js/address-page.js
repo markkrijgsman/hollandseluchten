@@ -12,7 +12,9 @@
 
   const COLORS = { you: "#2277FF", city: "#202333", grey: "#B0BAC2" };
 
-  const state = { lookup: null, period: "year", backendDate: "2026-08-15", backendRes: null };
+  const DATE_MIN = "2020-01-01";
+  const DATE_MAX = "2026-09-30";
+  const state = { lookup: null, period: "month", customRange: null, backendDate: null, backendBundle: null };
   let leafletMap = null;
 
   const CHROME = {
@@ -33,6 +35,10 @@
       "Your location or postcode is only used to find the nearest monitoring station and is never stored.",
     ],
     "form.try": ["Of kies een voorbeeld:", "Or try an example:"],
+    "form.period": ["Periode:", "Period:"],
+    "form.rangeFrom": ["Van", "From"],
+    "form.rangeTo": ["Tot en met", "To (inclusive)"],
+    "form.apply": ["Toepassen", "Apply"],
   };
 
   function makeCtx(input) {
@@ -63,6 +69,97 @@
     quarter: t("afgelopen 3 maanden", "the last 3 months"),
     month: t("afgelopen maand", "the last month"),
   })[key];
+
+  function renderSearchPeriodSelect() {
+    const sel = document.getElementById("search-period");
+    if (!sel) return;
+    const opts = [
+      ["week", "Afgelopen 7 dagen", "Last 7 days"],
+      ["month", "Afgelopen 30 dagen", "Last 30 days"],
+      ["quarter", "Afgelopen 3 maanden", "Last 3 months"],
+      ["year", "Heel jaar (365 dagen)", "Full year (365 days)"],
+      ["custom", "Eigen periode…", "Custom period…"],
+    ];
+    sel.innerHTML = opts.map(([k, nl, en]) => `<option value="${k}"${state.period === k ? " selected" : ""}>${esc(t(nl, en))}</option>`).join("");
+
+    const lbl = document.getElementById("search-period-label");
+    if (lbl) lbl.textContent = t("Periode:", "Period:");
+    const applyBtn = document.getElementById("search-apply");
+    if (applyBtn) applyBtn.textContent = t("Toepassen", "Apply");
+    const fromSpan = document.querySelector("#search-from-label span");
+    if (fromSpan) fromSpan.textContent = t("Van", "From");
+    const toSpan = document.querySelector("#search-to-label span");
+    if (toSpan) toSpan.textContent = t("Tot en met", "To (inclusive)");
+
+    const customRow = document.getElementById("search-custom-row");
+    if (customRow) customRow.hidden = state.period !== "custom";
+  }
+
+  function bindSearchPeriod() {
+    const sel = document.getElementById("search-period");
+    if (!sel) return;
+    sel.addEventListener("change", async (e) => {
+      state.period = e.target.value;
+      if (state.period === "custom" && !state.customRange) {
+        const clamp = (d) => (d < DATE_MIN ? DATE_MIN : d > DATE_MAX ? DATE_MAX : d);
+        const to = clamp(new Date().toISOString().slice(0, 10));
+        const from = clamp(new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
+        state.customRange = { from, to };
+        D.setCustomRange(from, to);
+      }
+      renderSearchPeriodSelect();
+      if (state.period === "custom") {
+        const fi = document.getElementById("search-from");
+        const ti = document.getElementById("search-to");
+        if (fi && state.customRange) fi.value = state.customRange.from;
+        if (ti && state.customRange) ti.value = state.customRange.to;
+        return;
+      }
+      if (state.lookup) {
+        if (state.backendBundle && state.backendBundle.ok) {
+          const { lat, lon } = state.lookup.place;
+          const tsRes = await D.fetchBackendTimeseries(lat, lon, state.backendBundle.latestDate, state.period, state.backendBundle.radiusKm);
+          if (tsRes.ok) {
+            state.backendBundle.timeseries = tsRes.data;
+            state.backendBundle.timeseriesRange = tsRes.range;
+          }
+        }
+        const y = window.scrollY;
+        render();
+        window.scrollTo(0, y);
+      }
+    });
+
+    const rangeForm = document.getElementById("search-range-form");
+    if (rangeForm) {
+      rangeForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const from = document.getElementById("search-from").value;
+        const to = document.getElementById("search-to").value;
+        const err = document.getElementById("search-range-error");
+        const fail = (nl, en) => { err.hidden = false; err.textContent = t(nl, en); };
+        if (!from || !to) return fail("Vul beide datums in.", "Enter both dates.");
+        if (from > to) return fail("De startdatum ligt na de einddatum.", "The start date is after the end date.");
+        if (from < DATE_MIN || to > DATE_MAX) {
+          return fail(
+            `Kies datums tussen ${A.longDate(DATE_MIN)} en ${A.longDate(DATE_MAX)}.`,
+            `Choose dates between ${A.longDate(DATE_MIN)} and ${A.longDate(DATE_MAX)}.`
+          );
+        }
+        err.hidden = true;
+        state.customRange = { from, to };
+        D.setCustomRange(from, to);
+        state.backendDate = to;
+        if (state.lookup) {
+          const { lat, lon } = state.lookup.place;
+          state.backendBundle = await D.fetchBackendBundle(lat, lon, to, "custom", 15);
+          const y = window.scrollY;
+          render();
+          window.scrollTo(0, y);
+        }
+      });
+    }
+  }
 
   const clsName = (c) => t(c.nl, c.en);
 
@@ -152,6 +249,23 @@
     </div>`;
   }
 
+  function dataSourceBadge(r) {
+    if (r && r.fromBackend && r.backend && !r.backend.fromEmbeddedParquet) {
+      const date = r.backend.latestDate || "";
+      return `<p class="data-source-badge data-source-live" role="status">
+        <span aria-hidden="true">●</span> ${esc(t(`Live meetdata van Luchtmeetnet API · ${date}`, `Live data from Luchtmeetnet API · ${date}`))}
+      </p>`;
+    }
+    if (r && r.fromBackend && r.backend && r.backend.fromEmbeddedParquet) {
+      return `<p class="data-source-badge data-source-embedded" role="status">
+        <span aria-hidden="true">◑</span> ${esc(t("Ingebedde dataset (backend niet bereikbaar)", "Embedded dataset (backend offline)"))}
+      </p>`;
+    }
+    return `<p class="data-source-badge data-source-demo" role="status">
+      <span aria-hidden="true">○</span> ${esc(t("Demodata (geen backend)", "Demo data (no backend)"))}
+    </p>`;
+  }
+
   // LAAG 1: Eén rustige kaart met het directe antwoord + kaartje
   function verdictCard(lk, r, apiRes) {
     const p = lk.place;
@@ -161,11 +275,15 @@
     const v = concernVerdict(ix, r, p.label);
 
     const g = r && !r.tooFar ? r.grade : livePm != null ? D.grade(livePm) : D.grade(10);
+    const refStations = apiRes && apiRes.ok && apiRes.data && apiRes.data.reference && apiRes.data.reference.stations || [];
     const nearText = r && !r.tooFar
       ? `${esc(r.near.s.naam)} (${fmt(r.near.km)} km)`
-      : apiRes && apiRes.ok && apiRes.data && apiRes.data.reference && apiRes.data.reference.stations[0]
-        ? `${esc(apiRes.data.reference.stations[0].name)} (${fmt(apiRes.data.reference.stations[0].distance_km)} km)`
+      : refStations.length
+        ? refStations.map(s => `${esc(s.name)} (${fmt(s.distance_km)} km)`).join(", ")
         : esc(r && r.near ? `${r.near.s.naam} (${fmt(r.near.km)} km)` : "Luchtmeetnet");
+    const nearLabel = refStations.length > 1
+      ? t(`${refStations.length} meetstations gebruikt`, `${refStations.length} monitoring stations used`)
+      : t("Dichtstbijzijnde meetpunt", "Nearest monitoring point");
 
     const q = r && !r.tooFar
       ? t(`Wat is de gemiddelde luchtkwaliteit in ${r.near.s.buurt}?`, `What is the average air quality in ${r.near.s.buurt}?`)
@@ -182,6 +300,7 @@
 
       <h2 class="verdict-headline">${esc(v.headline)}</h2>
       <p class="verdict-lead">${esc(v.lead)}</p>
+      ${dataSourceBadge(r)}
 
       <div class="quick-facts">
         <div class="fact-box">
@@ -204,7 +323,7 @@
         <div class="fact-box">
           <span class="fact-label">${esc(t("Gemeten bij", "Measured at"))}</span>
           <div class="fact-value"><span>${nearText}</span></div>
-          <span class="fact-sub">${esc(t("Dichtstbijzijnde meetpunt", "Nearest monitoring point"))}</span>
+          <span class="fact-sub">${esc(nearLabel)}</span>
         </div>
       </div>
 
@@ -216,6 +335,121 @@
         <span class="muted">${esc(t("Wil je zelf een vraag stellen over de metingen?", "Want to ask your own question about the measurements?"))}</span>
         <a class="btn-outline" href="index.html?q=${encodeURIComponent(q)}">${esc(t("Stel een vraag →", "Ask a question →"))}</a>
       </div>
+    </section>`;
+  }
+
+  // Health card: Air Quality & Your Health
+  function healthCard(r, bundle) {
+    const WHO_DAY = 15;
+    const WHO_YEAR = 5;
+    const SCALE_MAX = 50;
+
+    const dailyPm = bundle && bundle.ok && bundle.pm25 ? bundle.pm25.pm25 : null;
+    const hasRange = r && !r.tooFar;
+    const periodKey = hasRange && r.period ? r.period.key : state.period;
+    const isYear = periodKey === "year";
+
+    const periodMean = hasRange ? (r.periodMean != null ? r.periodMean : r.mean) : null;
+    const displayValue = periodMean != null ? periodMean : dailyPm;
+    if (displayValue == null) return "";
+
+    const isAbove = displayValue > WHO_DAY;
+    const pct = Math.min((displayValue / SCALE_MAX) * 100, 100);
+    const markerPct = (WHO_DAY / SCALE_MAX) * 100;
+    const fillColor = isAbove ? "#ef7d32" : "#2f9e6b";
+
+    const daysOverWho = isYear && r ? r.daysOverWho : null;
+    const annualMean = isYear && r && r.mean != null ? r.mean : null;
+
+    let displayLabel;
+    if (hasRange && periodMean != null) {
+      displayLabel = isYear
+        ? t("Jaargemiddelde PM2.5", "Annual mean PM2.5")
+        : t("Gemiddelde PM2.5 (geselecteerde periode)", "Average PM2.5 (selected period)");
+    } else {
+      displayLabel = t("PM2.5 daggemiddelde", "PM2.5 daily average");
+    }
+
+    let interpretation;
+    if (hasRange && periodMean != null) {
+      if (isYear) {
+        const days = daysOverWho != null ? daysOverWho : 0;
+        const dayWord = (n) => t(`${n} ${n === 1 ? "dag" : "dagen"}`, `${n} ${n === 1 ? "day" : "days"}`);
+        const annAbove = annualMean != null && annualMean > WHO_YEAR;
+        if (annAbove) {
+          interpretation = t(
+            `Het jaargemiddelde PM2.5 (${fmt(displayValue)} µg/m³) ligt boven het WHO-jaaradvies van ${WHO_YEAR} µg/m³. Er waren ${dayWord(days)} waarop de concentratie boven het WHO-dagadvies van ${WHO_DAY} µg/m³ lag. Blootstelling aan fijnstof kan je luchtwegen en hart-vaatstelsel aantasten, zeker bij langdurige of frequente blootstelling.`,
+            `The annual mean PM2.5 (${fmt(displayValue)} µg/m³) is above the WHO annual guideline of ${WHO_YEAR} µg/m³. There were ${dayWord(days)} on which the concentration exceeded the WHO daily guideline of ${WHO_DAY} µg/m³. Exposure to fine particles can affect your respiratory and cardiovascular health, particularly if exposure is frequent or prolonged.`
+          );
+        } else {
+          interpretation = t(
+            `Het jaargemiddelde PM2.5 (${fmt(displayValue)} µg/m³) voldoet aan het WHO-jaaradvies van ${WHO_YEAR} µg/m³. Er waren ${dayWord(days)} waarop de concentratie boven het WHO-dagadvies van ${WHO_DAY} µg/m³ lag. Lagere blootstelling aan fijnstof is over het algemeen beter voor je gezondheid, al zijn gezondheidseffecten ook bij lage concentraties niet volledig uit te sluiten.`,
+            `The annual mean PM2.5 (${fmt(displayValue)} µg/m³) meets the WHO annual guideline of ${WHO_YEAR} µg/m³. There were ${dayWord(days)} on which the concentration exceeded the WHO daily guideline of ${WHO_DAY} µg/m³. Lower exposure to fine particles is generally better for health, although health effects cannot be completely ruled out at lower concentrations.`
+          );
+        }
+      } else {
+        if (isAbove) {
+          interpretation = t(
+            `Het gemiddelde PM2.5 over de geselecteerde periode (${fmt(displayValue)} µg/m³) ligt boven het WHO-dagadvies van ${WHO_DAY} µg/m³. Blootstelling aan fijnstof kan je luchtwegen en hart-vaatstelsel aantasten, zeker bij langdurige of frequente blootstelling.`,
+            `The average PM2.5 over the selected period (${fmt(displayValue)} µg/m³) is above the WHO daily guideline of ${WHO_DAY} µg/m³. Exposure to fine particles can affect your respiratory and cardiovascular health, particularly if exposure is frequent or prolonged.`
+          );
+        } else {
+          interpretation = t(
+            `Het gemiddelde PM2.5 over de geselecteerde periode (${fmt(displayValue)} µg/m³) voldoet aan het WHO-dagadvies van ${WHO_DAY} µg/m³. Lagere blootstelling aan fijnstof is over het algemeen beter voor je gezondheid, al zijn gezondheidseffecten ook bij lage concentraties niet volledig uit te sluiten.`,
+            `The average PM2.5 over the selected period (${fmt(displayValue)} µg/m³) is at or below the WHO daily guideline of ${WHO_DAY} µg/m³. Lower exposure to fine particles is generally better for health, although health effects cannot be completely ruled out at lower concentrations.`
+          );
+        }
+      }
+    } else {
+      if (isAbove) {
+        interpretation = t(
+          `De geschatte PM2.5-concentratie van vandaag ligt boven het WHO-24-uursadvies van ${WHO_DAY} µg/m³. Blootstelling aan fijnstof kan je luchtwegen en hart-vaatstelsel aantasten, zeker bij langdurige of frequente blootstelling.`,
+          `Today's estimated PM2.5 concentration is above the WHO 24-hour guideline level of ${WHO_DAY} µg/m³. Exposure to fine particles can affect your respiratory and cardiovascular health, particularly if exposure is frequent or prolonged.`
+        );
+      } else {
+        interpretation = t(
+          `De PM2.5-concentratie van vandaag voldoet aan het WHO-24-uursadvies van ${WHO_DAY} µg/m³. Lagere blootstelling aan fijnstof is over het algemeen beter voor je gezondheid, al zijn gezondheidseffecten ook bij lage concentraties niet volledig uit te sluiten.`,
+          `Today's PM2.5 concentration is at or below the WHO 24-hour guideline level of ${WHO_DAY} µg/m³. Lower exposure to fine particles is generally better for health, although health effects cannot be completely ruled out at lower concentrations.`
+        );
+      }
+    }
+
+    const heartSvg = `<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" class="health-heart" focusable="false"><path d="M10 17.5S2 12 2 7a4.5 4.5 0 0 1 8-2.83A4.5 4.5 0 0 1 18 7c0 5-8 10.5-8 10.5z" fill="currentColor"/></svg>`;
+
+    return `<section class="card health-card" aria-label="${esc(t("Luchtkwaliteit en je gezondheid", "Air Quality & Your Health"))}">
+      <div class="health-card-title">
+        ${heartSvg}
+        <h2>${esc(t("Luchtkwaliteit & je gezondheid", "Air Quality & Your Health"))}</h2>
+      </div>
+
+      <div class="health-concentration">
+        <span class="health-value" style="color:${fillColor}">${fmt(displayValue)}</span>
+        <span class="health-unit">µg/m³</span>
+        <span class="health-concentration-label">${esc(displayLabel)}</span>
+      </div>
+
+      <div class="health-bar-wrap" role="img" aria-label="${esc(t(`PM2.5: ${fmt(displayValue)} µg/m³ — WHO-dagadvies: ${WHO_DAY} µg/m³`, `PM2.5: ${fmt(displayValue)} µg/m³ — WHO daily guideline: ${WHO_DAY} µg/m³`))}">
+        <div class="health-bar-track">
+          <div class="health-bar-fill" style="width:${pct.toFixed(1)}%;background:${fillColor}"></div>
+          <div class="health-bar-marker" style="left:${markerPct.toFixed(1)}%">
+            <span class="health-bar-marker-label">${esc(t(`WHO-advies: ${WHO_DAY} µg/m³`, `WHO guideline: ${WHO_DAY} µg/m³`))}</span>
+          </div>
+        </div>
+        <div class="health-bar-endpoints">
+          <span class="muted small">0</span>
+          <span class="muted small">${SCALE_MAX} µg/m³</span>
+        </div>
+      </div>
+
+      <div class="health-info">
+        <h3>${esc(t("Wat betekent dit?", "What does this mean?"))}</h3>
+        <p>${esc(interpretation)}</p>
+      </div>
+
+      <p class="health-disclaimer muted small">${esc(t(
+        `Dit meetgegeven voorspelt geen individuele gezondheidsuitkomsten. Het WHO-24-uursadvies wordt beoordeeld op basis van het jaarlijkse 99e percentiel, niet op één enkele dag. Referentie: WHO Global Air Quality Guidelines (2021).`,
+        `This measurement does not predict individual health outcomes. The WHO 24-hour guideline is assessed using the annual 99th percentile, not a single day. Reference: WHO Global Air Quality Guidelines (2021).`
+      ))}</p>
     </section>`;
   }
 
@@ -269,13 +503,15 @@
           `The difference is ${fmt(Math.abs(diff))} µg/m³. That could be your neighbourhood (traffic, wood burning), but also the sensor itself.`
         );
 
-    const daily = r.period.key !== "year";
+    const spanDays = D.daysBetween(r.period.start, r.period.end);
+    const daily = r.period.key === "custom" ? spanDays <= 120 : r.period.key !== "year";
     let labels, you, city, tick;
     if (daily) {
       labels = r.dates;
       you = r.est;
       city = r.cityDaily;
-      tick = (d, i) => (i % 7 === 0 ? A.shortDate(d) : null);
+      const step = labels.length <= 14 ? 1 : 7;
+      tick = (d, i) => (i % step === 0 ? A.shortDate(d) : null);
     } else {
       const byMonth = (vals) => A.groupMean(r.dates, vals, (x) => x.slice(0, 7));
       const ym = byMonth(r.est);
@@ -302,6 +538,7 @@
           <label for="period" class="muted small">${esc(t("Kies periode:", "Choose period:"))} ${periodSelect()}</label>
           <span class="muted small">${esc(A.longDate(r.period.start))} – ${esc(A.longDate(r.period.end))}</span>
         </div>
+        ${customRangeFields(r)}
         <div class="stats">
           <div><span class="muted small">${esc(t("Jouw plek", "Your spot"))}</span><b style="color:${COLORS.you}">${fmt(r.mean)}</b><span class="muted small">µg/m³</span></div>
           <div><span class="muted small">${esc(cityName)}</span><b>${fmt(r.city)}</b><span class="muted small">µg/m³</span></div>
@@ -378,37 +615,34 @@
     </details>`;
   }
 
-  function backendBox(apiRes) {
-    if (!apiRes || apiRes.offline) return "";
-    if (!apiRes.ok) {
+  function backendBox(bundle) {
+    if (!bundle) return "";
+    if (!bundle.ok) {
       return `<div class="backend-box">
-        <strong>${esc(t("Live Luchtmeetnet-data (/pm25 API)", "Live Luchtmeetnet data (/pm25 API)"))}</strong>
-        <div class="backend-controls">
-          <label for="backend-date" class="muted small">${esc(t("Meetdatum (2020 – sep 2026):", "Measurement date (2020 – Sep 2026):"))}</label>
-          <input type="date" id="backend-date" value="${esc(state.backendDate)}" min="2020-01-01" max="2026-09-30" />
-        </div>
-        <p class="muted small" style="margin:0">${esc(String(apiRes.error))}</p>
+        <strong>${esc(t("Lokale REST API (http://localhost:8000)", "Local REST API (http://localhost:8000)"))}</strong>
+        <p class="muted small" style="margin:6px 0 0">${esc(String(bundle.error || "Backend niet bereikbaar — teruggevallen op lokale demodata."))}</p>
       </div>`;
     }
-    const d = apiRes.data;
-    const grp = d.basis === "sensors" ? d.sensors : d.reference;
+    const d = bundle.pm25;
+    const grp = d && (d.basis === "sensors" ? d.sensors : d.reference);
     const stations = (grp && grp.stations) || [];
+    const base = D.apiBase();
     return `<div class="backend-box">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <strong>${esc(t("Live Luchtmeetnet-referentiemeting (/pm25 API)", "Live Luchtmeetnet reference measurement (/pm25 API)"))}</strong>
-        <span class="pill ok">${esc(t(`Daggemiddelde: ${fmt(d.pm25)} µg/m³`, `Daily mean: ${fmt(d.pm25)} µg/m³`))}</span>
+        <strong>${esc(t("Live REST API · Officiële Parquet-dataset (Luchtmeetnet + Analyse-Together)", "Live REST API · Official Parquet dataset (Luchtmeetnet + Analyse-Together)"))}</strong>
+        ${d ? `<span class="pill ok">${esc(t(`Gewogen daggemiddelde (${d.date}): ${fmt(d.pm25)} µg/m³`, `Weighted daily mean (${d.date}): ${fmt(d.pm25)} µg/m³`))}</span>` : ""}
       </div>
       <div class="backend-controls">
-        <label for="backend-date" class="muted small">${esc(t("Kies datum uit de officiële Parquet-dataset:", "Pick date from official Parquet dataset:"))}</label>
-        <input type="date" id="backend-date" value="${esc(d.date)}" min="2020-01-01" max="2026-09-30" />
-        <span class="muted small">${esc(t(`${stations.length} station(s) binnen ${d.radius_km} km (1/d² gewogen)`, `${stations.length} station(s) within ${d.radius_km} km (1/d² weighted)`))}</span>
+        <label for="backend-date" class="muted small">${esc(t("Meetdatum (2020 – sep 2026):", "Measurement date (2020 – Sep 2026):"))}</label>
+        <input type="date" id="backend-date" value="${esc(bundle.latestDate)}" min="2020-01-01" max="2026-09-30" />
+        <span class="muted small">${esc(t(`${stations.length} station(s) binnen ${bundle.radiusKm} km (1/d² gewogen)`, `${stations.length} station(s) within ${bundle.radiusKm} km (1/d² weighted)`))}</span>
       </div>
       ${
         stations.length
           ? `<div class="table-wrap"><table class="norms"><thead><tr>
               <th>${esc(t("Station", "Station"))}</th>
               <th>${esc(t("Afstand", "Distance"))}</th>
-              <th>${esc(t("Gewicht", "Weight"))}</th>
+              <th>${esc(t("Gewicht (1/d²)", "Weight (1/d²)"))}</th>
               <th>${esc(t("Geldige uren", "Valid hours"))}</th>
               <th>${esc(t("Daggemiddelde", "Daily mean"))}</th>
             </tr></thead><tbody>
@@ -426,19 +660,27 @@
             </tbody></table></div>`
           : ""
       }
+      <p class="muted small" style="margin:8px 0 0">
+        <b>REST API endpoints gebruikt:</b>
+        <a href="${esc(base + (bundle.stations && bundle.stations.reproduce ? bundle.stations.reproduce : "/stations"))}" target="_blank" rel="noopener"><code>GET /stations</code></a> ·
+        ${d && d.reproduce ? `<a href="${esc(base + d.reproduce)}" target="_blank" rel="noopener"><code>GET /pm25</code></a> · ` : ""}
+        ${bundle.compareWho && bundle.compareWho.reproduce ? `<a href="${esc(base + bundle.compareWho.reproduce)}" target="_blank" rel="noopener"><code>GET /pm25/compare (WHO)</code></a> · ` : ""}
+        ${bundle.timeseries && bundle.timeseries.reproduce ? `<a href="${esc(base + bundle.timeseries.reproduce)}" target="_blank" rel="noopener"><code>GET /pm25/timeseries</code></a> · ` : ""}
+        <a href="${esc(base + "/docs")}" target="_blank" rel="noopener">Swagger UI (/docs)</a>
+      </p>
     </div>`;
   }
 
   function params(obj) {
     const label = (k) => k.replace(/_/g, " ");
     return Object.entries(obj || {})
-      .map(([k, v]) => `<div><span class="muted">${esc(label(k))}:</span> ${esc(Array.isArray(v) ? v.join(", ") : v)}</div>`)
+      .map(([k, v]) => `<div><span class="muted">${esc(label(k))}:</span> ${esc(Array.isArray(v) ? v.join(", ") : typeof v === "object" && v !== null ? JSON.stringify(v) : v)}</div>`)
       .join("");
   }
 
   // LAAG 2D: Voor onderzoekers / nieuwsgierigen: Audit Trail & ruwe stationsdata
-  function auditDrawer(audit, apiRes) {
-    const badgeClass = (bron) => (bron === "Samen Analyseren" ? "sa" : bron === "Backend API" ? "api" : "own");
+  function auditDrawer(audit, bundle) {
+    const badgeClass = (bron) => (bron === "Samen Analyseren" ? "sa" : bron === "REST API" || bron === "Backend API" ? "api" : "own");
     const badgeLabel = (bron) =>
       bron === "Samen Analyseren"
         ? "Samen Analyseren"
@@ -446,8 +688,8 @@
           ? "PDOK"
           : bron === "Geolocation"
             ? "Browser API"
-            : bron === "Backend API"
-              ? "Backend /pm25"
+            : bron === "REST API" || bron === "Backend API"
+              ? "REST API"
               : t("Aanvullend", "Added by us");
     return `<details class="drawer" id="berekening">
       <summary>
@@ -458,11 +700,11 @@
         <span class="summary-tag">${esc(t("Voor onderzoekers", "Audit trail"))}</span>
       </summary>
       <div class="drawer-body">
-        ${backendBox(apiRes)}
+        ${backendBox(bundle)}
         ${audit.beperkingen.length ? `<div class="caveats"><h3>${esc(t("Kanttekeningen & onzekerheid", "Limitations & uncertainty"))}</h3><ul>${audit.beperkingen.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : ""}
         <p class="muted small">${esc(t(
-          "Groen = gevalideerde R-functie uit Samen Analyseren, blauw = live FastAPI backend (/pm25), oranje = aanvullende stap.",
-          "Green = validated R function from Samen Analyseren, blue = live FastAPI backend (/pm25), orange = additional step."
+          "Groen = gevalideerde R-functie uit Samen Analyseren, blauw = lokale REST API (localhost:8000), oranje = aanvullende stap.",
+          "Green = validated R function from Samen Analyseren, blue = local REST API (localhost:8000), orange = additional step."
         ))}</p>
         <div class="table-wrap"><table class="steps"><thead><tr><th>#</th><th>${esc(t("Stap", "Step"))}</th><th>${esc(t("Functie", "Function"))}</th><th>${esc(t("Instellingen", "Settings"))}</th><th>${esc(t("Uitkomst", "Outcome"))}</th></tr></thead><tbody>
         ${audit.stappen.map((s) => `<tr><td>${s.nr}</td><td>${esc(s.stap)}</td>
@@ -477,29 +719,21 @@
   function periodSelect() {
     const opt = (k, nl, en) => `<option value="${k}"${state.period === k ? " selected" : ""}>${esc(t(nl, en))}</option>`;
     return `<select id="period" class="select" aria-label="${esc(t("Periode", "Period"))}">
-      ${opt("year", "Afgelopen 12 maanden", "Last 12 months")}${opt("quarter", "Afgelopen 3 maanden", "Last 3 months")}${opt("month", "Afgelopen maand", "Last month")}
+      ${opt("week", "Afgelopen 7 dagen", "Last 7 days")}${opt("month", "Afgelopen 30 dagen", "Last 30 days")}${opt("quarter", "Afgelopen 3 maanden", "Last 3 months")}${opt("year", "Heel jaar (365 dagen)", "Full year (365 days)")}${opt("custom", "Eigen periode…", "Custom period…")}
     </select>`;
   }
 
-  function appendBackendAudit(ctx, apiRes) {
-    if (!apiRes) return;
-    if (apiRes.ok && apiRes.data && Array.isArray(apiRes.data.audit)) {
-      apiRes.data.audit.forEach((step) => {
-        const { step: _nr, action, functions, result, ...rest } = step;
-        const fnName = Array.isArray(functions) ? functions.join(" · ") : "GET /pm25";
-        const bron = Array.isArray(functions) ? "Samen Analyseren" : "Backend API";
-        ctx.step(
-          `Backend: ${action}`,
-          fnName,
-          rest,
-          result != null ? `${result} µg/m³` : action === "R: Analyse-Together functions" ? `${step.hourly_values_in} uren (${step.outliers_removed} uitschieters verwijderd)` : "OK",
-          bron
-        );
-      });
-      if (Array.isArray(apiRes.data.limitations)) {
-        apiRes.data.limitations.forEach((lim) => ctx.caveat(lim));
-      }
-    }
+  // Van/tot-datums, alleen zichtbaar bij "Eigen periode".
+  function customRangeFields(r) {
+    if (state.period !== "custom") return "";
+    const from = state.customRange ? state.customRange.from : r.period.start;
+    const to = state.customRange ? state.customRange.to : r.period.end;
+    return `<form id="custom-range" class="custom-range" novalidate>
+      <label>${esc(t("Van", "From"))} <input type="date" id="range-from" value="${esc(from)}" min="${DATE_MIN}" max="${DATE_MAX}" required></label>
+      <label>${esc(t("Tot en met", "To (inclusive)"))} <input type="date" id="range-to" value="${esc(to)}" min="${DATE_MIN}" max="${DATE_MAX}" required></label>
+      <button type="submit" class="btn-outline">${esc(t("Toepassen", "Apply"))}</button>
+      <span class="form-error" id="range-error" role="alert" aria-live="polite" hidden></span>
+    </form>`;
   }
 
   function render() {
@@ -539,23 +773,21 @@
     } else {
       ctx.step(
         t("Adres of postcode opzoeken", "Look up address or postcode"),
-        lk.offline ? t("aanvullend: postcodetabel (offline)", "added: postcode table (offline)") : "PDOK Locatieserver · free",
+        lk.offline ? t("aanvullend: postcodetabel (offline)", "added: postcode table (offline)") : "PDOK Locatieserver / GET /geocode",
         { zoekopdracht: lk.postcode, ...(houseStr.trim() ? { huisnummer: houseStr.trim() } : { modus: t("alleen postcode/plaats", "postcode/place only") }) },
         `${lk.place.label} (${lk.place.lat.toFixed(4)}, ${lk.place.lon.toFixed(4)})`,
         lk.offline ? "Aanvullend" : "PDOK"
       );
     }
 
-    appendBackendAudit(ctx, state.backendRes);
-    const r = D.analyse(lk.place, state.period, ctx);
-
-    ctx.caveat(t(
-      "Goedkope burgersensoren hebben een meetonzekerheid van circa 20% (minimaal 5,3 µg/m³) en worden daarom vergeleken met het officiële Luchtmeetnet-referentiestation.",
-      "Low-cost citizen sensors have an uncertainty of roughly 20% (at least 5.3 µg/m³) and are therefore calibrated against the official Luchtmeetnet reference station."
-    ));
+    const r =
+      state.backendBundle && state.backendBundle.ok
+        ? D.buildResultFromBackend(state.backendBundle, state.period, ctx)
+        : D.analyse(lk.place, state.period, ctx);
 
     out.innerHTML =
-      verdictCard(lk, r, state.backendRes) +
+      verdictCard(lk, r, state.backendBundle && state.backendBundle.pm25 ? { ok: true, data: state.backendBundle.pm25 } : null) +
+      healthCard(r, state.backendBundle) +
       `<section class="drilldown-section" aria-labelledby="drilldown-heading">
         <div class="drilldown-head">
           <h2 id="drilldown-heading">${esc(t("Meer weten? Klik om verder te kijken", "Want to know more? Click to explore further"))}</h2>
@@ -564,7 +796,7 @@
         ${!r.tooFar ? healthDrawer(r) : ""}
         ${compareDrawer(r)}
         ${normsDrawer(r)}
-        ${auditDrawer(ctx.audit, state.backendRes)}
+        ${auditDrawer(ctx.audit, state.backendBundle)}
       </section>`;
 
     openDrawers.forEach((id) => {
@@ -587,10 +819,14 @@
     const map = L.map(el, { scrollWheelZoom: false }).setView([p.lat, p.lon], 14);
     leafletMap = map;
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
-      maxZoom: 19,
-    }).addTo(map);
+    if (window.L.gridLayer && window.L.gridLayer.googleMutant) {
+      L.gridLayer.googleMutant({ type: "roadmap" }).addTo(map);
+    } else {
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
+        maxZoom: 19,
+      }).addTo(map);
+    }
 
     const bounds = [[p.lat, p.lon]];
 
@@ -612,7 +848,18 @@
         meanById[item.s.id] = item.mean;
       });
     }
-    M.sensors.forEach((s) => {
+    const mapStations =
+      r && r.fromBackend && Array.isArray(r.allStations) && r.allStations.length
+        ? r.allStations.map((st) => ({
+            id: st.id,
+            naam: st.name.trim(),
+            buurt: `${st.station_type || st.kind} · ${st.area_type || ""}`,
+            lat: st.lat,
+            lon: st.lon,
+          }))
+        : M.sensors;
+
+    mapStations.forEach((s) => {
       const isNear = r && r.near && r.near.s && r.near.s.id === s.id;
       const val = meanById[s.id];
       const marker = L.circleMarker([s.lat, s.lon], {
@@ -622,14 +869,14 @@
         weight: 2,
         fillOpacity: 0.95,
       }).addTo(map);
-      const valText = val != null ? `<br/>${esc(t("Gemiddeld", "Average"))}: <b>${fmt(val)} µg/m³</b>` : "";
+      const valText = val != null ? `<br/>${esc(t("Daggemiddelde", "Daily mean"))}: <b>${fmt(val)} µg/m³</b>` : "";
       const nearBadge = isNear ? ` · <b>${esc(t("dichtstbijzijnd", "nearest"))} (${fmt(r.near.km)} km)</b>` : "";
       marker.bindPopup(
         `<b>${esc(s.naam)}</b> <span style="color:#6b7080">(${esc(s.id)})</span><br/>${esc(s.buurt)}${nearBadge}${valText}`
       );
     });
 
-    if (M.reference && M.reference.lat && M.reference.lon) {
+    if ((!r || !r.fromBackend) && M.reference && M.reference.lat && M.reference.lon) {
       L.circleMarker([M.reference.lat, M.reference.lon], {
         radius: 6,
         fillColor: "#202333",
@@ -661,7 +908,7 @@
     );
 
     if (bounds.length > 1 && r && !r.tooFar) {
-      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 15 });
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 });
     }
 
     map.on("click", async (ev) => {
@@ -689,9 +936,62 @@
   function bind(audit, lk, r) {
     initMap(lk, r);
     const periodEl = document.getElementById("period");
+    const rangeForm = document.getElementById("custom-range");
+    if (rangeForm) {
+      rangeForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const from = document.getElementById("range-from").value;
+        const to = document.getElementById("range-to").value;
+        const err = document.getElementById("range-error");
+        const fail = (nl, en) => {
+          err.hidden = false;
+          err.textContent = t(nl, en);
+        };
+        if (!from || !to) return fail("Vul beide datums in.", "Enter both dates.");
+        if (from > to) return fail("De startdatum ligt na de einddatum.", "The start date is after the end date.");
+        if (from < DATE_MIN || to > DATE_MAX) {
+          return fail(
+            `Kies datums tussen ${A.longDate(DATE_MIN)} en ${A.longDate(DATE_MAX)}.`,
+            `Choose dates between ${A.longDate(DATE_MIN)} and ${A.longDate(DATE_MAX)}.`
+          );
+        }
+        err.hidden = true;
+        state.customRange = { from, to };
+        D.setCustomRange(from, to);
+        // De meetdatum (/pm25) volgt de einddatum van de gekozen periode.
+        state.backendDate = to;
+        if (state.lookup) {
+          const { lat, lon } = state.lookup.place;
+          state.backendBundle = await D.fetchBackendBundle(lat, lon, to, "custom", 15);
+        }
+        const y = window.scrollY;
+        render();
+        window.scrollTo(0, y);
+      });
+    }
     if (periodEl) {
-      periodEl.addEventListener("change", (e) => {
+      periodEl.addEventListener("change", async (e) => {
         state.period = e.target.value;
+        renderSearchPeriodSelect();
+        if (state.period === "custom") {
+          // Begin met de periode die al getoond werd, zodat de datums meteen kloppen.
+          if (!state.customRange && r && r.period) state.customRange = { from: r.period.start, to: r.period.end };
+          if (state.customRange) D.setCustomRange(state.customRange.from, state.customRange.to);
+        }
+        if (state.backendBundle && state.backendBundle.ok && state.lookup) {
+          const { lat, lon } = state.lookup.place;
+          const tsRes = await D.fetchBackendTimeseries(
+            lat,
+            lon,
+            state.backendBundle.latestDate,
+            state.period,
+            state.backendBundle.radiusKm
+          );
+          if (tsRes.ok) {
+            state.backendBundle.timeseries = tsRes.data;
+            state.backendBundle.timeseriesRange = tsRes.range;
+          }
+        }
         const y = window.scrollY;
         render();
         window.scrollTo(0, y);
@@ -703,7 +1003,7 @@
         if (!e.target.value || !state.lookup) return;
         state.backendDate = e.target.value;
         const { lat, lon } = state.lookup.place;
-        state.backendRes = await D.fetchBackendPm25(lat, lon, state.backendDate, 15);
+        state.backendBundle = await D.fetchBackendBundle(lat, lon, state.backendDate, state.period, 15);
         const y = window.scrollY;
         render();
         window.scrollTo(0, y);
@@ -737,7 +1037,7 @@
 
   async function refreshWithPlace(res) {
     state.lookup = res;
-    state.backendRes = await D.fetchBackendPm25(res.place.lat, res.place.lon, state.backendDate, 15);
+    state.backendBundle = await D.fetchBackendBundle(res.place.lat, res.place.lon, state.backendDate, state.period, 15);
     render();
   }
 
@@ -852,10 +1152,13 @@
   );
   I.onChange(() => {
     applyChrome();
+    renderSearchPeriodSelect();
     render();
   });
 
   applyChrome();
+  renderSearchPeriodSelect();
+  bindSearchPeriod();
   const params0 = new URLSearchParams(window.location.search);
   if (params0.get("postcode")) {
     document.getElementById("postcode").value = params0.get("postcode");

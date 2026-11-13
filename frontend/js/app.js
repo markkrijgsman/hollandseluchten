@@ -6,8 +6,59 @@
   const { esc } = window.Charts;
   const t = (nl, en) => I.t(nl, en);
 
-  const state = { question: "", overrides: {}, allExamples: false };
+  const state = { question: "", overrides: {}, allExamples: false, chatHistory: [], chatRes: null, coverage: null };
   const FEATURED = 5;
+
+  function apiBase() {
+    const param = new URLSearchParams(window.location.search).get("api");
+    return (param || window.HL_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+  }
+
+  async function checkCoverage() {
+    const badge = document.getElementById("badge");
+    try {
+      const res = await fetch(`${apiBase()}/coverage`, { signal: AbortSignal.timeout(1500) });
+      if (res.ok) {
+        state.coverage = await res.json();
+        if (badge) {
+          badge.textContent = t("Live REST API · localhost:8000", "Live REST API · localhost:8000");
+          badge.style.background = "#e9f6ef";
+          badge.style.color = "#258758";
+          badge.style.borderColor = "#b7e1cd";
+        }
+        fetch(`${apiBase()}/guidelines`, { signal: AbortSignal.timeout(1500) })
+          .then((r) => r.ok ? r.json() : null)
+          .then((norms) => { if (norms) document.dispatchEvent(new CustomEvent("hl:norms", { detail: norms })); })
+          .catch(() => {});
+        return;
+      }
+    } catch (_) {
+      // Backend offline; use embedded real Parquet dataset
+    }
+    if (window.REAL_DATA && badge) {
+      badge.textContent = t("Luchtmeetnet Parquet-data (2025–2026)", "Luchtmeetnet Parquet data (2025–2026)");
+      badge.style.background = "#eef4ff";
+      badge.style.color = "#2277ff";
+      badge.style.borderColor = "#c3d9ff";
+    }
+  }
+
+  async function callBackendChat(message) {
+    try {
+      const res = await fetch(`${apiBase()}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, history: state.chatHistory }),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data.history) state.chatHistory = data.history;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
 
   const AUDIT_KEYS = {
     vraag: ["vraag", "question"],
@@ -132,15 +183,38 @@
     const ctx = makeCtx(plan);
     const handler = window.Intents[plan.status === "clarify" ? "clarify" : plan.intent];
     const res = handler(plan, ctx);
-    ctx.audit.resultaat = { kort_antwoord: res.short };
+    if (state.chatRes && Array.isArray(state.chatRes.results)) {
+      state.chatRes.results.forEach((env) => {
+        if (Array.isArray(env.audit)) {
+          env.audit.forEach((a) => {
+            const { step, action, functions, result, ...rest } = a;
+            ctx.step(
+              `REST API: ${action || "stap"}`,
+              Array.isArray(functions) ? functions.join(" · ") : env.reproduce || "POST /chat",
+              rest,
+              result != null ? `${result} µg/m³` : "OK",
+              Array.isArray(functions) ? "Samen Analyseren" : "REST API"
+            );
+          });
+        }
+      });
+    }
+    ctx.audit.resultaat = { kort_antwoord: res.short, backend_chat: state.chatRes ? state.chatRes.answer : null };
     render(plan, res, ctx.audit);
   }
 
-  function ask(question) {
+  async function ask(question) {
     state.question = question.trim();
     state.overrides = {};
+    state.chatRes = null;
     document.getElementById("q").value = state.question;
-    if (state.question) run();
+    if (!state.question) return;
+    run();
+    const chatRes = await callBackendChat(state.question);
+    if (chatRes) {
+      state.chatRes = chatRes;
+      run();
+    }
   }
 
   function planCard(plan) {
@@ -207,6 +281,10 @@
   }
 
   function answerCard(res, audit) {
+    const saCount = (audit.stappen || []).filter((s) => s.bron === "Samen Analyseren").length;
+    const saBadge = saCount > 0
+      ? `<div class="sa-inline"><span class="badge sa">Samen Analyseren</span> ${saCount} ${esc(t("gevalideerde functies gebruikt", "validated function(s) used"))} · <a href="#audit">${esc(t("bekijk audit trail ↓", "see audit trail ↓"))}</a></div>`
+      : "";
     return `<section class="card answer" id="antwoord"><h2><span class="num">2</span>${esc(t("Antwoord", "Answer"))}</h2>
       <p class="short">${esc(res.short)}</p>
       ${res.meaning ? `<div class="meaning"><h3>${esc(t("Wat betekent dit voor jou?", "What does this mean for you?"))}</h3>${res.meaning}</div>` : `<div>${res.body}</div>`}
@@ -217,6 +295,7 @@
               .join("")}</div></div>`
           : ""
       }
+      ${saBadge}
     </section>
     ${
       res.meaning
@@ -258,13 +337,32 @@
     </section>`;
   }
 
+  function backendChatCard(chatRes) {
+    if (!chatRes || (!chatRes.results?.length && !chatRes.interpretation?.length)) return "";
+    const base = apiBase();
+    const calls = (chatRes.interpretation || [])
+      .map((c) => {
+        const link = c.reproduce ? `<a href="${esc(base + c.reproduce)}" target="_blank" rel="noopener"><code>${esc(c.reproduce)}</code></a>` : `<code>${esc(JSON.stringify(c.input))}</code>`;
+        return `<li><b>${esc(c.tool)}</b> → ${link}${c.error ? ` <span class="pill bad">${esc(c.error)}</span>` : ""}</li>`;
+      })
+      .join("");
+    return `<section class="card" style="border-left:4px solid var(--blue)">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <h2 style="margin:0">${esc(t("Live REST API Antwoord (POST /chat)", "Live REST API Answer (POST /chat)"))}</h2>
+        <span class="pill ok">${esc(chatRes.llm || "REST API")}</span>
+      </div>
+      <p class="short" style="font-family:var(--serif);font-size:1.25rem;margin:0 0 10px">${esc(chatRes.answer)}</p>
+      ${calls ? `<div class="muted small"><b>${esc(t("Aangeroepen backend-tools:", "Backend tools called:"))}</b><ul style="margin:4px 0 0;padding-left:18px">${calls}</ul></div>` : ""}
+    </section>`;
+  }
+
   function render(plan, res, audit) {
     const out = document.getElementById("result");
     const planHtml = planCard(plan).replace(
       /^<section class="card" id="begrepen"><h2><span class="num">1<\/span>([^<]+)<\/h2>/,
       `<details class="card drawer-card" id="begrepen"${plan.userChanges.length ? " open" : ""}><summary>$1 (${esc(t("gebruikte sensoren, periode & filters aanpassen", "sensors used, period & adjust filters"))})</summary><div class="drawer-inner">`
     ).replace(/<\/section>$/, "</div></details>");
-    out.innerHTML = answerCard(res, audit) + planHtml + auditCard(audit);
+    out.innerHTML = backendChatCard(state.chatRes) + answerCard(res, audit) + planHtml + auditCard(audit);
 
     out.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => {
       ask(b.dataset.q);
@@ -386,6 +484,7 @@
   });
 
   applyChrome();
+  checkCoverage();
   const initial = new URLSearchParams(window.location.search).get("q");
   if (initial) ask(initial);
 })();
