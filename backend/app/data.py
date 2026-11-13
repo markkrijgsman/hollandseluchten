@@ -8,8 +8,9 @@ import pyarrow.parquet as pq
 FIXED_TZ_OFFSET = pd.Timedelta(hours=1)
 
 
-def _day_bounds(day: Date) -> tuple[str, str]:
-    return f"{day.isoformat()}T00", f"{(day + timedelta(days=1)).isoformat()}T00"
+def _day_bounds(start: Date, end: Date | None = None) -> tuple[str, str]:
+    """[start 00:00, end+1 00:00) as ISO hour strings; end defaults to start (one day)."""
+    return f"{start.isoformat()}T00", f"{((end or start) + timedelta(days=1)).isoformat()}T00"
 
 
 class ReferenceRepository:
@@ -18,17 +19,32 @@ class ReferenceRepository:
     def __init__(self, measurements: Path, metadata: Path):
         self.measurements = measurements
         self.stations = pd.read_csv(metadata)
-        self._range: tuple[str, str] | None = None
+        self._stations: pd.DataFrame | None = None
+
+    def pm25_stations(self) -> pd.DataFrame:
+        """Stations with PM2.5 data: id, name, lat, lon, types, first/last hour (date) and number of hourly values."""
+        if self._stations is None:
+            t = pq.read_table(self.measurements, columns=["meetlocatie_id", "begindatumtijd", "waarde"],
+                              filters=[("component", "==", "PM2.5")]).to_pandas().dropna(subset=["waarde"])
+            g = t.groupby("meetlocatie_id")["begindatumtijd"].agg(data_from="min", data_to="max", hourly_values="size")
+            g["data_from"], g["data_to"] = g["data_from"].str[:10], g["data_to"].str[:10]
+            meta = self.stations.rename(columns={
+                "meetlocatie_id": "station", "meetlocatie_naam": "name", "breedtegraad": "lat",
+                "lengtegraad": "lon", "stationstype": "station_type", "gebiedstype": "area_type"})
+            self._stations = g.rename_axis("station").reset_index().merge(
+                meta[["station", "name", "lat", "lon", "station_type", "area_type"]], on="station", how="inner")
+        return self._stations
 
     @property
     def date_range(self) -> tuple[str, str]:
-        if self._range is None:
-            col = pq.read_table(self.measurements, columns=["begindatumtijd"]).column(0).to_pandas()
-            self._range = (col.min()[:10], col.max()[:10])
-        return self._range
+        st = self.pm25_stations()
+        return st["data_from"].min(), st["data_to"].max()
 
     def hourly(self, day: Date) -> pd.DataFrame:
-        lo, hi = _day_bounds(day)
+        return self.hourly_range(day, day)
+
+    def hourly_range(self, start: Date, end: Date) -> pd.DataFrame:
+        lo, hi = _day_bounds(start, end)
         table = pq.read_table(
             self.measurements,
             columns=["meetlocatie_id", "begindatumtijd", "waarde"],
@@ -49,6 +65,18 @@ class SensorRepository:
     def __init__(self, path: Path):
         self.path = path
         self._range: tuple[str, str] | None = None
+        self._stations: pd.DataFrame | None = None
+
+    def kit_stations(self) -> pd.DataFrame:
+        """Kits with calibrated PM2.5: id, name, lat, lon, first/last day (UTC+1) and number of hourly-ish values."""
+        if self._stations is None:
+            t = pq.read_table(self.path, columns=["kit_id", "timestamp_from", "pm25_kal", "latitude", "longitude"]
+                              ).to_pandas().dropna(subset=["pm25_kal", "latitude", "longitude"])
+            t["day"] = (pd.to_datetime(t["timestamp_from"], utc=True) + FIXED_TZ_OFFSET).dt.strftime("%Y-%m-%d")
+            g = t.groupby("kit_id").agg(data_from=("day", "min"), data_to=("day", "max"),
+                                        lat=("latitude", "median"), lon=("longitude", "median"))
+            self._stations = g.rename_axis("station").reset_index().assign(name=lambda d: d["station"])
+        return self._stations
 
     @property
     def date_range(self) -> tuple[str, str]:
@@ -59,8 +87,11 @@ class SensorRepository:
         return self._range
 
     def hourly(self, day: Date) -> pd.DataFrame:
-        start = pd.Timestamp(day.isoformat(), tz="UTC") - FIXED_TZ_OFFSET
-        end = start + pd.Timedelta(days=1)
+        return self.hourly_range(day, day)
+
+    def hourly_range(self, first: Date, last: Date) -> pd.DataFrame:
+        start = pd.Timestamp(first.isoformat(), tz="UTC") - FIXED_TZ_OFFSET
+        end = pd.Timestamp(last.isoformat(), tz="UTC") - FIXED_TZ_OFFSET + pd.Timedelta(days=1)
         df = pq.read_table(
             self.path, columns=["kit_id", "timestamp_from", "pm25_kal", "latitude", "longitude"],
             filters=[("timestamp_from", ">=", start.to_pydatetime()), ("timestamp_from", "<", end.to_pydatetime())],
