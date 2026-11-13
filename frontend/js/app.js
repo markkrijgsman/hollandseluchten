@@ -206,13 +206,10 @@
   }
 
   function answerCard(res, audit) {
-    return `<section class="card answer"><h2><span class="num">2</span>${esc(t("Antwoord", "Answer"))}</h2>
+    return `<section class="card answer">
+      <h2>${esc(t("Het korte antwoord", "The short answer"))}</h2>
       <p class="short">${esc(res.short)}</p>
-      ${res.meaning ? `<div class="meaning"><h3>${esc(t("Wat betekent dit voor jou?", "What does this mean for you?"))}</h3>${res.meaning}</div>` : ""}
-      ${res.meaning ? `<h3>${esc(t("De cijfers", "The numbers"))}</h3>` : ""}
-      ${res.body}
-      ${res.chart || ""}
-      ${audit.beperkingen.length ? `<div class="caveats"><h3>${esc(t("Let op", "Please note"))}</h3><ul>${audit.beperkingen.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : ""}
+      ${res.meaning ? `<div class="meaning"><h3>${esc(t("Wat betekent dit voor jou?", "What does this mean for you?"))}</h3>${res.meaning}</div>` : `<div>${res.body}</div>`}
       ${
         res.followups && res.followups.length
           ? `<div class="followups"><h3>${esc(t("Vervolgvragen", "Follow-up questions"))}</h3><div class="chips">${res.followups
@@ -220,7 +217,19 @@
               .join("")}</div></div>`
           : ""
       }
-    </section>`;
+    </section>
+    ${
+      res.meaning
+        ? `<details class="card drawer-card">
+            <summary>${esc(t("Bekijk de cijfers, grafiek en kanttekeningen", "See the numbers, chart, and caveats"))}</summary>
+            <div class="drawer-inner">
+              ${res.body}
+              ${res.chart || ""}
+              ${audit.beperkingen.length ? `<div class="caveats"><h3>${esc(t("Let op", "Please note"))}</h3><ul>${audit.beperkingen.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : ""}
+            </div>
+          </details>`
+        : ""
+    }`;
   }
 
   function params(obj) {
@@ -230,26 +239,33 @@
   }
 
   function auditCard(audit) {
-    return `<section class="card"><h2><span class="num">3</span>${esc(t("Audit trail", "Audit trail"))}</h2>
-      <p class="muted">${esc(t(
-        "Elke stap die tot dit antwoord leidde. Groen = gevalideerde functie uit Samen Analyseren, oranje = aanvullende eigen berekening.",
-        "Every step that led to this answer. Green = a validated Samen Analyseren function, orange = an extra calculation of our own."
-      ))}</p>
-      <table class="steps"><thead><tr><th>#</th><th>${esc(t("Stap", "Step"))}</th><th>${esc(t("Functie", "Function"))}</th><th>${esc(t("Instellingen", "Settings"))}</th><th>${esc(t("Uitkomst", "Outcome"))}</th></tr></thead><tbody>
-      ${audit.stappen
-        .map((s) => `<tr><td>${s.nr}</td><td>${esc(s.stap)}</td>
-            <td><span class="badge ${s.bron === "Samen Analyseren" ? "sa" : "own"}">${esc(s.bron === "Samen Analyseren" ? "Samen Analyseren" : t("Aanvullend", "Added by us"))}</span><code>${esc(s.functie)}</code></td>
-            <td>${params(s.parameters)}</td><td>${esc(s.resultaat)}</td></tr>`)
-        .join("")}
-      </tbody></table>
-      <details class="json"><summary>${esc(t("Volledige audit trail (JSON)", "Full audit trail (JSON)"))}</summary><pre>${esc(JSON.stringify(localize(audit), null, 2))}</pre></details>
-      <button type="button" id="download" class="secondary">${esc(t("Download audit trail (JSON)", "Download audit trail (JSON)"))}</button>
-    </section>`;
+    return `<details class="card drawer-card">
+      <summary>${esc(t(`Hoe is dit berekend? (Audit trail · ${audit.stappen.length} stappen)`, `How was this calculated? (Audit trail · ${audit.stappen.length} steps)`))}</summary>
+      <div class="drawer-inner">
+        <p class="muted">${esc(t(
+          "Elke stap die tot dit antwoord leidde. Groen = gevalideerde functie uit Samen Analyseren, oranje = aanvullende eigen berekening.",
+          "Every step that led to this answer. Green = a validated Samen Analyseren function, orange = an extra calculation of our own."
+        ))}</p>
+        <table class="steps"><thead><tr><th>#</th><th>${esc(t("Stap", "Step"))}</th><th>${esc(t("Functie", "Function"))}</th><th>${esc(t("Instellingen", "Settings"))}</th><th>${esc(t("Uitkomst", "Outcome"))}</th></tr></thead><tbody>
+        ${audit.stappen
+          .map((s) => `<tr><td>${s.nr}</td><td>${esc(s.stap)}</td>
+              <td><span class="badge ${s.bron === "Samen Analyseren" ? "sa" : "own"}">${esc(s.bron === "Samen Analyseren" ? "Samen Analyseren" : t("Aanvullend", "Added by us"))}</span><code>${esc(s.functie)}</code></td>
+              <td>${params(s.parameters)}</td><td>${esc(s.resultaat)}</td></tr>`)
+          .join("")}
+        </tbody></table>
+        <details class="json"><summary>${esc(t("Volledige audit trail (JSON)", "Full audit trail (JSON)"))}</summary><pre>${esc(JSON.stringify(localize(audit), null, 2))}</pre></details>
+        <button type="button" id="download" class="secondary">${esc(t("Download audit trail (JSON)", "Download audit trail (JSON)"))}</button>
+      </div>
+    </details>`;
   }
 
   function render(plan, res, audit) {
     const out = document.getElementById("result");
-    out.innerHTML = planCard(plan) + answerCard(res, audit) + auditCard(audit);
+    const planHtml = planCard(plan).replace(
+      /^<section class="card"><h2><span class="num">1<\/span>([^<]+)<\/h2>/,
+      `<details class="card drawer-card"${plan.userChanges.length ? " open" : ""}><summary>$1 (${esc(t("gebruikte sensoren, periode & filters aanpassen", "sensors used, period & adjust filters"))})</summary><div class="drawer-inner">`
+    ).replace(/<\/section>$/, "</div></details>");
+    out.innerHTML = answerCard(res, audit) + planHtml + auditCard(audit);
 
     out.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => {
       ask(b.dataset.q);

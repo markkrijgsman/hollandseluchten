@@ -7,8 +7,14 @@
   const t = (nl, en) => window.I18N.t(nl, en);
 
   const PDOK = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free";
+  const PDOK_REVERSE = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/reverse";
   const FILTERS = { enabled: true, cutoff: 100, stuckDays: 7 };
   const MAX_KM = 4;
+
+  function apiBase() {
+    const param = new URLSearchParams(window.location.search).get("api");
+    return (param || window.HL_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+  }
 
   // Jaargemiddelde PM2.5 (µg/m³). WHO is een gezondheidsadvies, EU-grenzen zijn wet.
   const NORMS = { who: 5, eu2030: 10, euNow: 25, whoDay: 15, euDay2030: 25 };
@@ -41,39 +47,67 @@
 
   function normalizePostcode(raw) {
     const pc = String(raw || "").toUpperCase().replace(/\s+/g, "");
-    return /^[1-9][0-9]{3}[A-Z]{2}$/.test(pc) ? pc : null;
+    if (/^[1-9][0-9]{3}[A-Z]{2}$/.test(pc)) return pc;
+    if (/^[1-9][0-9]{3}$/.test(pc)) return pc;
+    return null;
   }
 
   function parseNumber(raw) {
-    const m = String(raw || "").trim().match(/^(\d{1,5})\s*([A-Za-z]?)/);
-    return m ? { number: Number(m[1]), letter: m[2].toUpperCase() } : null;
+    const str = String(raw || "").trim();
+    if (!str) return null;
+    const m = str.match(/^(\d{1,5})\s*([A-Za-z]?)/);
+    return m ? { number: Number(m[1]), letter: m[2].toUpperCase() } : { invalid: true };
   }
 
-  async function geocode(postcode, house) {
-    const q = `postcode:${postcode} AND huisnummer:${house.number}${house.letter ? ` AND huisletter:${house.letter}` : ""}`;
-    const url = `${PDOK}?q=${encodeURIComponent(q)}&fq=type:adres&rows=1&fl=weergavenaam,straatnaam,woonplaatsnaam,gemeentenaam,wijknaam,buurtnaam,centroide_ll`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) throw new Error(`PDOK ${res.status}`);
-    const doc = (await res.json()).response.docs[0];
-    if (!doc) return null;
+  function parseDoc(doc, source = "pdok") {
+    if (!doc || !doc.centroide_ll) return null;
     const [lon, lat] = doc.centroide_ll.match(/[-\d.]+/g).map(Number);
     return {
       label: doc.weergavenaam,
-      gemeente: doc.gemeentenaam,
-      wijk: doc.wijknaam,
-      buurt: doc.buurtnaam,
+      postcode: doc.postcode || null,
+      gemeente: doc.gemeentenaam || doc.woonplaatsnaam || null,
+      wijk: doc.wijknaam || null,
+      buurt: doc.buurtnaam || null,
       lat,
       lon,
-      source: "pdok",
+      source,
     };
   }
 
-  function fallback(postcode, house) {
-    const id = POSTCODE_FALLBACK[postcode.slice(0, 4)];
-    if (!id) return null;
-    const s = M.sensors.find((x) => x.id === id);
+  async function geocode(query, house) {
+    const fl = "weergavenaam,postcode,straatnaam,woonplaatsnaam,gemeentenaam,wijknaam,buurtnaam,centroide_ll";
+    let url;
+    if (/^[1-9][0-9]{3}[A-Z]{2}$/.test(query) && house && !house.invalid) {
+      const q = `postcode:${query} AND huisnummer:${house.number}${house.letter ? ` AND huisletter:${house.letter}` : ""}`;
+      url = `${PDOK}?q=${encodeURIComponent(q)}&fq=type:adres&rows=1&fl=${fl}`;
+    } else if (/^[1-9][0-9]{3}([A-Z]{2})?$/.test(query)) {
+      const q = `postcode:${query}*`;
+      url = `${PDOK}?q=${encodeURIComponent(q)}&fq=type:(postcode OR adres)&rows=1&fl=${fl}`;
+    } else {
+      const q = house && !house.invalid ? `${query} ${house.number}${house.letter}` : query;
+      url = `${PDOK}?q=${encodeURIComponent(q)}&fq=type:(adres OR postcode OR woonplaats OR weg)&rows=1&fl=${fl}`;
+    }
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) throw new Error(`PDOK ${res.status}`);
+    const doc = (await res.json()).response.docs[0];
+    return parseDoc(doc, "pdok");
+  }
+
+  function fallback(rawQuery, house) {
+    const pc4 = String(rawQuery || "").replace(/\s+/g, "").slice(0, 4);
+    const id = POSTCODE_FALLBACK[pc4];
+    const qLower = String(rawQuery || "").toLowerCase();
+    const byName = !id && M.sensors.find((s) => qLower.includes(s.buurt.toLowerCase()) || qLower.includes(s.naam.toLowerCase()));
+    const s = id ? M.sensors.find((x) => x.id === id) : byName || (qLower.includes("haarlem") ? M.sensors[2] : null);
+    if (!s) return null;
+    const pcNorm = normalizePostcode(rawQuery);
+    const nrPart = house && !house.invalid ? ` ${house.number}${house.letter}` : "";
+    const label = pcNorm
+      ? `${pcNorm.length === 6 ? `${pcNorm.slice(0, 4)} ${pcNorm.slice(4)}` : pcNorm}${nrPart}, Haarlem`
+      : `${rawQuery.trim()}${nrPart}, Haarlem`;
     return {
-      label: `${postcode.slice(0, 4)} ${postcode.slice(4)} ${house.number}${house.letter}, Haarlem`,
+      label,
+      postcode: pcNorm,
       gemeente: "Haarlem",
       wijk: s.buurt,
       buurt: null,
@@ -83,17 +117,112 @@
     };
   }
 
-  async function lookup(rawPostcode, rawNumber) {
-    const postcode = normalizePostcode(rawPostcode);
+  async function lookup(rawQuery, rawNumber) {
+    const trimmed = String(rawQuery || "").trim();
+    if (!trimmed) return { error: "postcode" };
+    const postcode = normalizePostcode(trimmed);
     const house = parseNumber(rawNumber);
-    if (!postcode) return { error: "postcode" };
-    if (!house) return { error: "number" };
+    if (house && house.invalid) return { error: "number" };
     try {
-      const found = await geocode(postcode, house);
-      return found ? { postcode, house, place: found } : { error: "notfound", postcode, house };
+      const found = await geocode(postcode || trimmed, house);
+      if (found) {
+        return {
+          postcode: found.postcode || postcode || trimmed,
+          house: house || { number: "", letter: "" },
+          place: found,
+        };
+      }
+      return { error: "notfound", postcode: postcode || trimmed, house: house || { number: "", letter: "" } };
     } catch (e) {
-      const place = fallback(postcode, house);
-      return place ? { postcode, house, place, offline: true } : { error: "offline", postcode, house };
+      const place = fallback(postcode || trimmed, house);
+      return place
+        ? { postcode: postcode || trimmed, house: house || { number: "", letter: "" }, place, offline: true }
+        : { error: "offline", postcode: postcode || trimmed, house: house || { number: "", letter: "" } };
+    }
+  }
+
+  async function reverseGeocode(lat, lon) {
+    const fl = "weergavenaam,postcode,straatnaam,woonplaatsnaam,gemeentenaam,wijknaam,buurtnaam,centroide_ll";
+    const url = `${PDOK_REVERSE}?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&type=adres&rows=1&fl=${fl}`;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const doc = (await res.json()).response.docs[0];
+        if (doc) {
+          return {
+            label: doc.weergavenaam,
+            postcode: doc.postcode || null,
+            gemeente: doc.gemeentenaam || doc.woonplaatsnaam || null,
+            wijk: doc.wijknaam || null,
+            buurt: doc.buurtnaam || null,
+            lat,
+            lon,
+            source: "geolocation+pdok",
+          };
+        }
+      }
+    } catch (_) {
+      // Offline fallback below
+    }
+    const near = nearest({ lat, lon });
+    return {
+      label: `${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E`,
+      postcode: null,
+      gemeente: near && near.km <= MAX_KM ? "Haarlem" : null,
+      wijk: near && near.km <= MAX_KM ? near.s.buurt : null,
+      buurt: null,
+      lat,
+      lon,
+      source: "geolocation",
+    };
+  }
+
+  function locate() {
+    return new Promise((resolve) => {
+      if (!("geolocation" in navigator)) {
+        resolve({ error: "geolocation_unsupported" });
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const place = await reverseGeocode(lat, lon);
+          resolve({
+            postcode: place.postcode || "",
+            house: { number: "", letter: "" },
+            place,
+            fromGeolocation: true,
+            accuracyM: Math.round(pos.coords.accuracy || 0),
+          });
+        },
+        (err) => {
+          const codeMap = { 1: "geolocation_denied", 2: "geolocation_unavailable", 3: "geolocation_timeout" };
+          resolve({ error: codeMap[err && err.code] || "geolocation_unavailable" });
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+      );
+    });
+  }
+
+  async function fetchBackendPm25(lat, lon, date = "2025-05-01", radiusKm = 10) {
+    const base = apiBase();
+    const url = `${base}/pm25?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&date=${encodeURIComponent(date)}&radius_km=${encodeURIComponent(radiusKm)}`;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        return {
+          ok: false,
+          status: res.status,
+          url,
+          error: (body && body.detail && (body.detail.message || body.detail)) || `HTTP ${res.status}`,
+          audit: (body && body.detail && body.detail.audit) || [],
+        };
+      }
+      return { ok: true, status: 200, url, data: body };
+    } catch (err) {
+      return { ok: false, status: 0, url, offline: true, error: err.message || "Backend unreachable" };
     }
   }
 
@@ -246,5 +375,20 @@
     };
   }
 
-  window.Address = { NORMS, LKI_UPPER, LKI_CLASSES, GRADES, MAX_KM, FILTERS, lookup, analyse, lki, grade, periodFor };
+  window.Address = {
+    NORMS,
+    LKI_UPPER,
+    LKI_CLASSES,
+    GRADES,
+    MAX_KM,
+    FILTERS,
+    lookup,
+    locate,
+    reverseGeocode,
+    fetchBackendPm25,
+    analyse,
+    lki,
+    grade,
+    periodFor,
+  };
 })();

@@ -3,12 +3,20 @@ from datetime import date as Date
 from functools import lru_cache
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 from .geo import in_netherlands
 from .rbridge import RError
 from .service import NoDataError, Pm25Service, Settings
 
 app = FastAPI(title="Hollandse Luchten PM2.5 API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 @lru_cache

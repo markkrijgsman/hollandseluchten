@@ -56,6 +56,15 @@ button.secondary { background: #fff; color: var(--accent); border: 1px solid var
 .card h3 { font-size: 0.95rem; margin: 18px 0 6px; }
 .num { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.85rem; }
 
+.drawer-card { padding: 0; overflow: hidden; }
+.drawer-card > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 16px 22px; font-weight: 600; color: var(--ink); cursor: pointer; user-select: none; }
+.drawer-card > summary::-webkit-details-marker { display: none; }
+.drawer-card > summary:hover { background: #f8fafc; }
+.drawer-card > summary::before { content: "▸"; color: var(--accent); font-size: 1.1rem; transition: transform 0.2s ease; }
+.drawer-card[open] > summary { border-bottom: 1px solid var(--line); background: #f8fafc; }
+.drawer-card[open] > summary::before { transform: rotate(90deg); }
+.drawer-inner { padding: 18px 22px; }
+
 .plan { display: grid; grid-template-columns: 140px 1fr; gap: 6px 14px; margin: 0; }
 .plan dt { color: var(--muted); }
 .plan dd { margin: 0; }
