@@ -32,7 +32,7 @@ app/
   integrations/    r_bridge.py (Rscript + r/analysis.R), pdok.py (geocoder)
   analysis/models.py  typed responses (the Swagger response schemas)
   tools/           schemas.py (request models), responses.py, registry.py (tools shared by REST and chat)
-  chat/            engine.py (loop), llm.py (Claude / stub), prompt.py, fake_llm.py
+  chat/            engine.py (agent run), tools.py (endpoints as LangChain tools), models.py, prompt.py, fake_llm.py
 r/analysis.R       glue that sources Analyse-Together and applies its functions
 config/            guidelines.toml
 ```
@@ -43,9 +43,13 @@ config/            guidelines.toml
 envelopes with audit), `suggestions`, `llm` and `history`. It is stateless: send `history` back for follow-ups.
 The model only picks tools and words the answer; all numbers come from the tools.
 
-* With `ANTHROPIC_API_KEY` set it uses Claude (`HL_CHAT_MODEL`, default `claude-sonnet-5-5`).
+It is a LangChain agent (`langchain.agents.create_agent`, on LangGraph) whose tools are the endpoints above
+(`chat/tools.py`). The tool result goes to the model without audit; the full result goes to the client.
+
+* With `OPENAI_API_KEY` set it uses OpenAI (`HL_CHAT_MODEL`, default `gpt-4o`).
 * Without a key a **rule-based stub** answers (`llm` says so). It handles a place or `lat, lon` plus a date, a year or
-  nothing; it is not a language model. Force it with `HL_LLM=fake`, or force Claude with `HL_LLM=anthropic`.
+  nothing; it is not a language model. Force it with `HL_LLM=fake`, or force OpenAI with `HL_LLM=openai`.
+* Any other LangChain chat model works: return it from `get_chat_model` in `chat/models.py`.
 
 ## Required project structure
 
@@ -100,7 +104,7 @@ python3 -m venv .venv
 Tests run on synthetic data written to a temp folder, so they need neither the hackathon repo nor the sensor file.
 Tests that run the real R functions are skipped when `Rscript` or the Analyse-Together checkout is missing.
 `tests/test_real_data.py` (marker `real_data`) smoke-tests the real hackathon data and is skipped when `HL_DATA_DIR` is missing.
-The live Claude test (marker `live`) needs `ANTHROPIC_API_KEY`.
+The live OpenAI test (marker `live`) needs `OPENAI_API_KEY`.
 
 ## Environment variables
 
@@ -112,7 +116,7 @@ The live Claude test (marker `live`) needs `ANTHROPIC_API_KEY`.
 | `HL_RSCRIPT` | `Rscript` | R executable |
 | `HL_GUIDELINES_FILE` | `config/guidelines.toml` | reference levels for `/pm25/compare` |
 | `HL_GEOCODER_URL` | PDOK Locatieserver | geocoder endpoint |
-| `ANTHROPIC_API_KEY` | unset | enables Claude for `/chat` |
-| `HL_LLM` / `HL_CHAT_MODEL` | auto / `claude-sonnet-5-5` | `fake` or `anthropic`; model id |
+| `OPENAI_API_KEY` | unset | enables OpenAI for `/chat` |
+| `HL_LLM` / `HL_CHAT_MODEL` | auto / `gpt-4o` | `fake` or `openai`; model id |
 
 Defaults are relative to `backend/`. A missing Analyse-Together checkout or R installation makes the API return 503.

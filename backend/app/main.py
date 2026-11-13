@@ -4,10 +4,11 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from langchain_core.language_models import BaseChatModel
 
 from .analysis.models import CompareResponse, CoverageResponse, Pm25Response, StationsResponse, TimeseriesResponse
 from .analysis.service import Pm25Service
-from .chat import LLM, ChatRequest, get_llm
+from .chat import ChatRequest, get_chat_model
 from .chat import chat as run_chat
 from .settings import Settings
 from .tools.registry import TOOLS, ToolError, execute
@@ -29,7 +30,7 @@ Air-pollution (PM2.5) answers for residents, with a transparent audit trail.
   and a `reproduce` URL that reruns the analysis.
 * **`POST /chat`** lets an LLM translate a question into calls on those endpoints. The model never computes numbers.
   The response lists every call made (`interpretation`) and the full results including their audit.
-  Without `ANTHROPIC_API_KEY` a rule-based stub answers (see the `llm` field in the response).
+  Without `OPENAI_API_KEY` a rule-based stub answers (see the `llm` field in the response).
 """
 
 app = FastAPI(title="Hollandse Luchten PM2.5 API", description=DESCRIPTION)
@@ -88,5 +89,5 @@ def pm25_compare(p: Annotated[CompareRequest, Query()], service: Service):
 
 
 @app.post("/chat", description="Ask a question in plain language. Send the returned `history` back with the next message for follow-ups.")
-def chat(req: ChatRequest, service: Service, llm: Annotated[LLM, Depends(get_llm)]):
-    return run_chat(service, llm, req)
+def chat(req: ChatRequest, service: Service, model: Annotated[BaseChatModel, Depends(get_chat_model)]):
+    return run_chat(service, model, req)

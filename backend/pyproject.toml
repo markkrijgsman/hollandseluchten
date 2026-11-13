@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-chat = ["anthropic>=0.40"]
+chat = ["langchain>=1.0", "langgraph>=1.0", "langchain-openai>=1.0"]
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [tool.setuptools.packages.find]
@@ -28,7 +28,7 @@ pythonpath = ["."]
 testpaths = ["tests"]
 markers = [
     "real_data: needs the HackathonHollandseLuchten data folder (skipped when missing)",
-    "live: calls an external service (needs ANTHROPIC_API_KEY)",
+    "live: calls an external service (needs OPENAI_API_KEY)",
 ]
 
 [tool.ruff]
