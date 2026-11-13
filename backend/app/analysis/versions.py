@@ -1,6 +1,6 @@
 """Which code and data a result was computed with. Informational only: nothing keys on it."""
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ..data.repositories import ReferenceRepository, SensorRepository
@@ -10,7 +10,7 @@ from ..settings import Settings
 def file_info(path: Path, date_range: tuple[str, str] | None = None) -> dict:
     st = path.stat()
     info = {"file": path.name, "size_bytes": st.st_size,
-            "modified": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(timespec="seconds")}
+            "modified": datetime.fromtimestamp(st.st_mtime, UTC).isoformat(timespec="seconds")}
     if date_range:
         info["covers"] = {"from": date_range[0], "to": date_range[1]}
     return info
