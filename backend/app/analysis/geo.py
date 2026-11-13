@@ -22,4 +22,4 @@ def in_netherlands(lat: float, lon: float) -> bool:
 def distances_km(df: "pd.DataFrame", lat: float, lon: float) -> "pd.Series":
     """Distance from (lat, lon) to each row of a frame with `lat` and `lon` columns."""
     import pandas as pd
-    return pd.Series([haversine_km(lat, lon, la, lo) for la, lo in zip(df["lat"], df["lon"])], index=df.index)
+    return pd.Series([haversine_km(lat, lon, la, lo) for la, lo in zip(df["lat"], df["lon"], strict=True)], index=df.index)

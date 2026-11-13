@@ -5,12 +5,21 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from .analysis.models import CompareResponse, CoverageResponse, Pm25Response, StationsResponse, TimeseriesResponse
 from .analysis.service import Pm25Service
-from .chat import LLM, ChatRequest, chat as run_chat, get_llm
+from .chat import LLM, ChatRequest, get_llm
+from .chat import chat as run_chat
 from .settings import Settings
 from .tools.registry import TOOLS, ToolError, execute
-from .tools.schemas import (CompareRequest, CoverageRequest, GeocodeRequest, Pm25Request, StationsRequest,
-                            TimeseriesRequest)
+from .tools.responses import GeocodeResponse
+from .tools.schemas import (
+    CompareRequest,
+    CoverageRequest,
+    GeocodeRequest,
+    Pm25Request,
+    StationsRequest,
+    TimeseriesRequest,
+)
 
 DESCRIPTION = """
 Air-pollution (PM2.5) answers for residents, with a transparent audit trail.
@@ -42,38 +51,38 @@ def run(name: str, params, service: Pm25Service) -> dict:
     try:
         return execute(service, TOOLS[name], params)
     except ToolError as exc:
-        raise HTTPException(exc.status, exc.detail)
+        raise HTTPException(exc.status, exc.detail) from exc
 
 
 Service = Annotated[Pm25Service, Depends(get_service)]
 
 
-@app.get("/geocode", description=TOOLS["geocode"].description)
+@app.get("/geocode", response_model=GeocodeResponse, description=TOOLS["geocode"].description)
 def geocode(p: Annotated[GeocodeRequest, Query()], service: Service):
     return run("geocode", p, service)
 
 
-@app.get("/coverage", description=TOOLS["coverage"].description)
+@app.get("/coverage", response_model=CoverageResponse, description=TOOLS["coverage"].description)
 def coverage(p: Annotated[CoverageRequest, Query()], service: Service):
     return run("coverage", p, service)
 
 
-@app.get("/stations", description=TOOLS["stations"].description)
+@app.get("/stations", response_model=StationsResponse, description=TOOLS["stations"].description)
 def stations(p: Annotated[StationsRequest, Query()], service: Service):
     return run("stations", p, service)
 
 
-@app.get("/pm25", description=TOOLS["pm25"].description)
+@app.get("/pm25", response_model=Pm25Response, description=TOOLS["pm25"].description)
 def pm25(p: Annotated[Pm25Request, Query()], service: Service):
     return run("pm25", p, service)
 
 
-@app.get("/pm25/timeseries", description=TOOLS["pm25_timeseries"].description)
+@app.get("/pm25/timeseries", response_model=TimeseriesResponse, description=TOOLS["pm25_timeseries"].description)
 def pm25_timeseries(p: Annotated[TimeseriesRequest, Query()], service: Service):
     return run("pm25_timeseries", p, service)
 
 
-@app.get("/pm25/compare", description=TOOLS["pm25_compare"].description)
+@app.get("/pm25/compare", response_model=CompareResponse, description=TOOLS["pm25_compare"].description)
 def pm25_compare(p: Annotated[CompareRequest, Query()], service: Service):
     return run("pm25_compare", p, service)
 

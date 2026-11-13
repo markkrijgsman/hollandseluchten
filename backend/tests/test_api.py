@@ -1,41 +1,8 @@
-from datetime import date, datetime, timezone
-from pathlib import Path
-
-import pandas as pd
+"""HTTP-level tests on synthetic data (see helpers.py). Real hackathon data: test_real_data.py."""
 import pytest
-from fastapi.testclient import TestClient
 
 from app.analysis.geo import haversine_km
-from app.main import app, get_service
-from app.analysis.service import Pm25Service
-from app.settings import Settings
-
-ROOT = Path(__file__).resolve().parent.parent
-DATA = ROOT.parent.parent / "HackathonHollandseLuchten" / "data"
-AT_DIR = ROOT.parent.parent / "Analyse-Together"
-LAT, LON = 52.3676, 4.9041
-DAY = date(2025, 5, 1)
-
-
-@pytest.fixture
-def sensor_parquet(tmp_path):
-    """Two kits on 2025-05-01 (UTC+1 day): A ~1 km away constant 20, B ~2 km away constant 10 with one 500 outlier."""
-    rows = []
-    for hour in range(24):
-        ts = datetime(2025, 4, 30, 23, tzinfo=timezone.utc) + pd.Timedelta(hours=hour)
-        rows.append(("A", ts, 20.0, LAT + 0.009, LON))
-        rows.append(("B", ts, 500.0 if hour == 0 else 10.0, LAT + 0.018, LON))
-    df = pd.DataFrame(rows, columns=["kit_id", "timestamp_from", "pm25_kal", "latitude", "longitude"])
-    path = tmp_path / "data_sensors.parquet"
-    df.to_parquet(path)
-    return path
-
-
-def make_client(sensor_path=None):
-    settings = Settings(DATA / "reference_measurements.parquet", DATA / "reference_station_metadata.csv",
-                        AT_DIR, sensor_path)
-    app.dependency_overrides[get_service] = lambda: Pm25Service(settings)
-    return TestClient(app)
+from helpers import DAY, LAT, LON
 
 
 def test_haversine():
@@ -43,15 +10,19 @@ def test_haversine():
     assert haversine_km(52.3676, 4.9041, 51.9244, 4.4777) == pytest.approx(57.7, abs=0.5)  # Amsterdam-Rotterdam
 
 
-def test_reference_only():
+def test_reference_only_weights_stations_and_ignores_other_components_and_far_stations(make_client):
     body = make_client().get("/pm25", params={"lat": LAT, "lon": LON, "date": DAY.isoformat()}).json()
-    assert body["basis"] == "reference_stations"
+    assert body["basis"] == "reference_stations" and body["sensors"] is None
+    stations = body["reference"]["stations"]
+    assert [s["id"] for s in stations] == ["NL00001", "NL00002"]  # NL00003 (Rotterdam) is outside the radius
+    d1, d2 = (haversine_km(LAT, LON, LAT + off, LON) for off in (0.009, 0.036))
+    w1, w2 = 1 / max(d1, 0.5) ** 2, 1 / max(d2, 0.5) ** 2
+    assert body["pm25"] == pytest.approx((14 * w1 + 10 * w2) / (w1 + w2), abs=0.01)  # PM10 rows (99) are not used
     assert body["uncertainty"] == 0
-    assert 5 < body["pm25"] < 40
-    assert body["audit"][3]["functions"][0] == "add_ref_kal"
+    assert next(a for a in body["audit"] if a["action"].startswith("R:"))["functions"][0] == "add_ref_kal"
 
 
-def test_sensor_idw_uncertainty_and_outlier(sensor_parquet):
+def test_sensor_idw_uncertainty_and_outlier(make_client, sensor_parquet):
     body = make_client(sensor_parquet).get(
         "/pm25", params={"lat": LAT, "lon": LON, "date": DAY.isoformat(), "min_hours": 0}).json()
     assert body["basis"] == "sensors"
@@ -65,13 +36,13 @@ def test_sensor_idw_uncertainty_and_outlier(sensor_parquet):
     assert body["uncertainty"] == pytest.approx(5.3, abs=0.01)
 
 
-def test_validation_and_no_data():
+def test_validation_and_no_data(make_client):
     client = make_client()
     assert client.get("/pm25", params={"lat": 48.85, "lon": 2.35, "date": "2025-05-01"}).status_code == 422
     assert client.get("/pm25", params={"lat": LAT, "lon": LON, "date": "2030-01-01"}).status_code == 404
 
 
-def test_audit_reports_what_r_ran_and_versions(sensor_parquet):
+def test_audit_reports_what_r_ran_and_versions(make_client, sensor_parquet):
     body = make_client(sensor_parquet).get(
         "/pm25", params={"lat": LAT, "lon": LON, "date": DAY.isoformat()}).json()
     r_step = next(a for a in body["audit"] if a["action"].startswith("R:"))
@@ -86,7 +57,7 @@ def test_audit_reports_what_r_ran_and_versions(sensor_parquet):
     assert "analyse_together_commit" in versions
 
 
-def test_timeseries_matches_daily_and_hourly(sensor_parquet):
+def test_timeseries_matches_daily_and_hourly(make_client, sensor_parquet):
     client = make_client(sensor_parquet)
     params = {"lat": LAT, "lon": LON, "from": "2025-04-30", "to": DAY.isoformat()}
     daily = client.get("/pm25/timeseries", params=params).json()
@@ -100,7 +71,7 @@ def test_timeseries_matches_daily_and_hourly(sensor_parquet):
     assert hourly["series"][0]["pm25"] == 20.0
 
 
-def test_timeseries_validation(sensor_parquet):
+def test_timeseries_validation(make_client, sensor_parquet):
     client = make_client(sensor_parquet)
     base = {"lat": LAT, "lon": LON}
     assert client.get("/pm25/timeseries", params={**base, "from": "2025-05-02", "to": "2025-05-01"}).status_code == 422
@@ -108,7 +79,7 @@ def test_timeseries_validation(sensor_parquet):
                                                   "resolution": "hour"}).status_code == 422
 
 
-def test_compare_counts_days_above_limit(sensor_parquet):
+def test_compare_counts_days_above_limit(make_client, sensor_parquet):
     client = make_client(sensor_parquet)
     params = {"lat": LAT, "lon": LON, "from": DAY.isoformat(), "to": DAY.isoformat()}
     who = client.get("/pm25/compare", params=params).json()
@@ -124,7 +95,7 @@ def test_compare_counts_days_above_limit(sensor_parquet):
     assert any(a["action"] == "compare with reference levels" for a in eu["audit"])
 
 
-def test_guidelines_come_from_config_file(tmp_path, monkeypatch):
+def test_guidelines_come_from_config_file(make_client, tmp_path, monkeypatch):
     f = tmp_path / "g.toml"
     f.write_text('''[[levels.test]]
 id = "t"
@@ -143,19 +114,22 @@ verified = true
                                                "against": "who"}).status_code == 422
 
 
-def test_coverage_and_stations(sensor_parquet):
+def test_coverage_and_stations(make_client, sensor_parquet):
     client = make_client(sensor_parquet)
     cov = client.get("/coverage").json()
-    assert cov["reference_stations"]["from"] <= "2025-05-01" <= cov["reference_stations"]["to"]
+    assert (cov["reference_stations"]["from"], cov["reference_stations"]["to"]) == ("2025-04-30", "2025-05-02")
+    assert cov["reference_stations"]["stations"] == 3
     assert cov["sensors"]["stations"] == 2 and cov["sensors"]["from"] == "2025-05-01"
     st = client.get("/stations", params={"lat": LAT, "lon": LON, "radius_km": 3}).json()
     kits = [s for s in st["stations"] if s["kind"] == "sensor"]
     assert [k["id"] for k in kits] == ["A", "B"] and kits[0]["distance_km"] < kits[1]["distance_km"]
+    traffic = next(s for s in st["stations"] if s["id"] == "NL00001")
+    assert traffic["station_type"] == "verkeer" and traffic["data_to"] == "2025-05-02"
     assert st["stations"] == sorted(st["stations"], key=lambda s: s["distance_km"])
     assert client.get("/stations", params={"lat": 10, "lon": 10}).status_code == 422
 
 
-def test_geocode(monkeypatch):
+def test_geocode(make_client, monkeypatch):
     import app.tools.registry as t
     monkeypatch.setattr(t, "geocode", lambda q, limit: [{"name": "Jordaan, Amsterdam", "type": "wijk", "lat": 52.37, "lon": 4.88}])
     body = make_client().get("/geocode", params={"q": "Jordaan"}).json()
@@ -172,7 +146,7 @@ def test_geocode_parses_pdok_point(monkeypatch):
     assert g.geocode("x") == [{"name": "X", "type": "wijk", "lat": 52.37, "lon": 4.88}]
 
 
-def test_reproduce_url_returns_same_result(sensor_parquet):
+def test_reproduce_url_returns_same_result(make_client, sensor_parquet):
     client = make_client(sensor_parquet)
     first = client.get("/pm25/timeseries", params={"lat": LAT, "lon": LON, "from": "2025-05-01", "to": "2025-05-01"}).json()
     assert first["request"]["from"] == "2025-05-01" and first["request"]["resolution"] == "day"

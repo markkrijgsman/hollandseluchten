@@ -8,13 +8,13 @@ from app.chat import get_llm
 from app.chat.engine import _for_model, tool_specs
 from app.chat.fake_llm import FakeLLM
 from app.main import app
-from test_api import DAY, LAT, LON, make_client, sensor_parquet  # noqa: F401
+from helpers import DAY, LAT, LON
 
 AMSTERDAM = [{"name": "Amsterdam", "type": "woonplaats", "lat": LAT, "lon": LON}]
 
 
 @pytest.fixture
-def client(sensor_parquet, monkeypatch):  # noqa: F811
+def client(make_client, sensor_parquet, monkeypatch):
     monkeypatch.setattr(tools_module, "geocode", lambda q, limit=5: AMSTERDAM)
     c = make_client(sensor_parquet)
     app.dependency_overrides[get_llm] = lambda: FakeLLM()
@@ -106,6 +106,7 @@ def test_get_llm_falls_back_to_stub_without_key(monkeypatch):
     assert isinstance(get_llm(), FakeLLM)
 
 
+@pytest.mark.live
 @pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY"), reason="needs ANTHROPIC_API_KEY (live Claude call)")
 def test_live_claude(client):
     from app.chat import AnthropicLLM

@@ -30,7 +30,8 @@ app/
                    periods.py, constants.py, errors.py, geo.py, guidelines.py (config/guidelines.toml)
   data/            repositories.py (Luchtmeetnet and Hollandse Luchten parquet access)
   integrations/    r_bridge.py (Rscript + r/analysis.R), pdok.py (geocoder)
-  tools/           schemas.py (request models), registry.py (tools shared by REST and chat)
+  analysis/models.py  typed responses (the Swagger response schemas)
+  tools/           schemas.py (request models), responses.py, registry.py (tools shared by REST and chat)
   chat/            engine.py (loop), llm.py (Claude / stub), prompt.py, fake_llm.py
 r/analysis.R       glue that sources Analyse-Together and applies its functions
 config/            guidelines.toml
@@ -85,15 +86,21 @@ Rscript -e 'install.packages(c("dplyr", "jsonlite"))'
 
 cd hollandseluchten/backend
 python3 -m venv .venv
-.venv/bin/pip install fastapi uvicorn pandas pyarrow httpx anthropic pytest
+.venv/bin/pip install -e ".[chat,dev]"   # dependencies are declared in pyproject.toml
 ```
 
 ## Run and test
 
 ```
 .venv/bin/uvicorn app.main:app          # http://localhost:8000/docs for the interactive docs
-.venv/bin/pytest
+.venv/bin/pytest            # ~12 s
+.venv/bin/ruff check app tests
 ```
+
+Tests run on synthetic data written to a temp folder, so they need neither the hackathon repo nor the sensor file.
+Tests that run the real R functions are skipped when `Rscript` or the Analyse-Together checkout is missing.
+`tests/test_real_data.py` (marker `real_data`) smoke-tests the real hackathon data and is skipped when `HL_DATA_DIR` is missing.
+The live Claude test (marker `live`) needs `ANTHROPIC_API_KEY`.
 
 ## Environment variables
 

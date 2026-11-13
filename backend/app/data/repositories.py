@@ -1,7 +1,8 @@
 """Hourly PM2.5 data access. Days are fixed UTC+1, matching the Luchtmeetnet files."""
 from __future__ import annotations
 
-from datetime import date as Date, timedelta
+from datetime import date as Date
+from datetime import timedelta
 from pathlib import Path
 
 import pandas as pd
