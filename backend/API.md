@@ -16,6 +16,26 @@ Every analysis response contains `limitations`, an `audit` list of steps, the re
 URL that reruns it. Sensors (calibrated `pm25_kal`) are used when available, otherwise official Luchtmeetnet stations.
 Calibration flag, uncertainty and outlier cut-off come from the Analyse-Together R functions (`r/analysis.R`).
 
+## Code layout
+
+```
+app/
+  main.py          routes only (uvicorn app.main:app)
+  settings.py      paths from the environment
+  analysis/        service.py      facade: compute, timeseries, compare, coverage, stations
+                   pipeline.py     observations -> station means -> weighted estimates (shared by all analyses)
+                   observations.py station selection + the R call
+                   weighting.py    the distance-weighted mean (pure pandas)
+                   compare.py, catalog.py, limitations.py, versions.py, audit.py,
+                   periods.py, constants.py, errors.py, geo.py, guidelines.py (config/guidelines.toml)
+  data/            repositories.py (Luchtmeetnet and Hollandse Luchten parquet access)
+  integrations/    r_bridge.py (Rscript + r/analysis.R), pdok.py (geocoder)
+  tools/           schemas.py (request models), registry.py (tools shared by REST and chat)
+  chat/            engine.py (loop), llm.py (Claude / stub), prompt.py, fake_llm.py
+r/analysis.R       glue that sources Analyse-Together and applies its functions
+config/            guidelines.toml
+```
+
 ## Chat
 
 `POST /chat` returns `answer`, `clarifying_question`, `interpretation` (every tool call made), `results` (full

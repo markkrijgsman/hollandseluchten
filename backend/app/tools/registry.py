@@ -5,11 +5,12 @@ from urllib.parse import urlencode
 
 from pydantic import BaseModel
 
-from .geocode import GeocodeError, geocode
-from .rbridge import RError
+from ..integrations.pdok import GeocodeError, geocode
+from ..integrations.r_bridge import RError
 from .schemas import (CompareRequest, CoverageRequest, GeocodeRequest, Pm25Request, StationsRequest,
                       TimeseriesRequest)
-from .service import NoDataError, Pm25Service
+from ..analysis.errors import NoDataError
+from ..analysis.service import Pm25Service
 
 
 class ToolError(Exception):

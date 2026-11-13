@@ -5,9 +5,10 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from app.geo import haversine_km
+from app.analysis.geo import haversine_km
 from app.main import app, get_service
-from app.service import Pm25Service, Settings
+from app.analysis.service import Pm25Service
+from app.settings import Settings
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT.parent.parent / "HackathonHollandseLuchten" / "data"
@@ -155,14 +156,14 @@ def test_coverage_and_stations(sensor_parquet):
 
 
 def test_geocode(monkeypatch):
-    import app.tools as t
+    import app.tools.registry as t
     monkeypatch.setattr(t, "geocode", lambda q, limit: [{"name": "Jordaan, Amsterdam", "type": "wijk", "lat": 52.37, "lon": 4.88}])
     body = make_client().get("/geocode", params={"q": "Jordaan"}).json()
     assert body["candidates"][0]["lat"] == 52.37
 
 
 def test_geocode_parses_pdok_point(monkeypatch):
-    import app.geocode as g
+    import app.integrations.pdok as g
 
     class Resp:
         def raise_for_status(self): pass
@@ -180,7 +181,7 @@ def test_reproduce_url_returns_same_result(sensor_parquet):
 
 
 def test_tool_schemas_are_usable_for_llm():
-    from app.tools import TOOLS
+    from app.tools.registry import TOOLS
     schema = TOOLS["pm25_compare"].model.model_json_schema(by_alias=True)
     assert {"lat", "lon", "from", "to"} <= set(schema["required"]) | set(schema["properties"])
     assert TOOLS["pm25_compare"].description.startswith("Compare")
