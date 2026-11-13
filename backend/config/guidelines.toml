@@ -1,0 +1,32 @@
+# Reference levels for PM2.5 (ug/m3) used by GET /pm25/compare.
+# Edit this file to change or add levels; restart the API afterwards.
+# Override the location with HL_GUIDELINES_FILE.
+#
+# Each level: id, name, type ("daily" or "annual"), limit, source, verified.
+# verified = false means the value was not checked against the source text; the API repeats this flag in its response.
+
+[[levels.who]]
+id = "who_2021_24h"
+name = "WHO guideline 2021, 24-hour mean"
+type = "daily"
+limit = 15
+source = "WHO Global Air Quality Guidelines 2021"
+verified = false
+
+[[levels.who]]
+id = "who_2021_annual"
+name = "WHO guideline 2021, annual mean"
+type = "annual"
+limit = 5
+source = "WHO Global Air Quality Guidelines 2021"
+verified = false
+
+[[levels.eu]]
+id = "eu_2008_annual"
+name = "EU limit value (Directive 2008/50/EC), annual mean"
+type = "annual"
+limit = 25
+source = "https://environment.ec.europa.eu/topics/air/air-quality/eu-air-quality-standards_en"
+verified = true
+
+# TODO: add the PM2.5 limits that Directive (EU) 2024/2881 applies from 2030 once checked against the directive text.

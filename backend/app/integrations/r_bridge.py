@@ -6,7 +6,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-R_SCRIPT = Path(__file__).resolve().parent.parent / "r" / "analysis.R"
+R_SCRIPT = Path(__file__).resolve().parents[2] / "r" / "analysis.R"
 REF_PATTERN = re.compile(r"^NL.[0-9].")
 
 
@@ -18,7 +18,7 @@ def _python_fallback(rows: list[dict], cutoff: float) -> dict:
     """Exact mirror of r/analysis.R (add_ref_kal, value < cutoff, add_uncertainty_sensor_percent)
     when Rscript is not installed on the local development machine."""
     if not rows:
-        return {"rows": [], "removed_outliers": 0, "functions": []}
+        return {"rows": [], "removed_outliers": 0, "functions": [], "parameters": {}}
 
     # 1. add_ref_kal: reference stations (substr(station,1,2) == "NL" & parameter == "pm25") get pm25_kal
     kal_rows = []
@@ -46,6 +46,11 @@ def _python_fallback(rows: list[dict], cutoff: float) -> dict:
         "rows": filtered,
         "removed_outliers": removed,
         "functions": ["add_ref_kal", "outlier cut-off (value < cutoff)", "add_uncertainty_sensor_percent"],
+        "parameters": {
+            "outlier_cutoff": cutoff,
+            "sensor_uncertainty_percent": 20,
+            "sensor_uncertainty_min_ug_m3": 5.3,
+        },
     }
 
 
