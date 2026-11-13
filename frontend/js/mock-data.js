@@ -31,12 +31,12 @@
   }
 
   const sensors = [
-    { id: "HLL_101", naam: "Schoterweg", buurt: "Haarlem-Noord", factor: 1.18, offset: 0.5 },
-    { id: "HLL_102", naam: "Kleverparkweg", buurt: "Haarlem-Noord", factor: 1.1, offset: 0.2 },
-    { id: "HLL_103", naam: "Grote Markt", buurt: "Centrum", factor: 1.22, offset: 0.9 },
-    { id: "HLL_104", naam: "Amsterdamsevaart", buurt: "Oost", factor: 1.3, offset: 1.4 },
-    { id: "HLL_105", naam: "Europaweg", buurt: "Schalkwijk", factor: 1.12, offset: 0.3 },
-    { id: "HLL_106", naam: "Zuiderhoutlaan", buurt: "Zuid-West", factor: 1.05, offset: -0.2 },
+    { id: "HLL_101", naam: "Schoterweg", buurt: "Haarlem-Noord", factor: 1.18, offset: 0.5, lat: 52.3907, lon: 4.6409 },
+    { id: "HLL_102", naam: "Kleverparkweg", buurt: "Haarlem-Noord", factor: 1.1, offset: 0.2, lat: 52.3911, lon: 4.6312 },
+    { id: "HLL_103", naam: "Grote Markt", buurt: "Centrum", factor: 1.22, offset: 0.9, lat: 52.3814, lon: 4.635 },
+    { id: "HLL_104", naam: "Amsterdamsevaart", buurt: "Oost", factor: 1.3, offset: 1.4, lat: 52.381, lon: 4.6523 },
+    { id: "HLL_105", naam: "Europaweg", buurt: "Schalkwijk", factor: 1.12, offset: 0.3, lat: 52.3651, lon: 4.6496 },
+    { id: "HLL_106", naam: "Zuiderhoutlaan", buurt: "Zuid-West", factor: 1.05, offset: -0.2, lat: 52.3636, lon: 4.6264 },
   ];
 
   const base = [];

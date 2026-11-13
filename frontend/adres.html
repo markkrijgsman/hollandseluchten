@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lucht op mijn adres · Hollandse Luchten (prototype)</title>
+    <link rel="stylesheet" href="adres.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="logo" href="adres.html" aria-label="Hollandse Luchten">
+        <span class="logo-mark" aria-hidden="true"></span>
+        <span class="logo-text">Hollandse Luchten</span>
+      </a>
+      <nav class="topnav">
+        <a href="adres.html" class="on" data-i18n="nav.address">Mijn adres</a>
+        <a href="index.html" data-i18n="nav.ask">Stel een vraag</a>
+      </nav>
+      <div class="top-actions">
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" data-lang="nl" class="on">NL</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+        <span class="mock-badge" data-i18n="badge">Prototype · nepdata</span>
+      </div>
+    </header>
+
+    <div class="shell">
+      <aside class="sidebar">
+        <h2 data-i18n="side.tools">Luchtkwaliteit</h2>
+        <a href="adres.html" class="on" data-i18n="nav.address">Mijn adres</a>
+        <a href="index.html" data-i18n="nav.ask">Stel een vraag</a>
+        <hr />
+        <h2 data-i18n="side.page">Op deze pagina</h2>
+        <a href="#overzicht" data-i18n="side.overview">Overzicht</a>
+        <a href="#vergelijking" data-i18n="side.compare">Vergelijking met Haarlem</a>
+        <a href="#normen" data-i18n="side.norms">Normen</a>
+        <a href="#gezondheid" data-i18n="side.health">Gezondheid</a>
+        <a href="#berekening" data-i18n="side.audit">Zo is het berekend</a>
+      </aside>
+
+      <main class="main">
+        <div class="page-head">
+          <h1 data-i18n="title">Lucht op mijn adres</h1>
+          <div class="help">
+            <span data-i18n="help.lead">Benieuwd hoe we hierop komen?</span>
+            <button type="button" class="btn-outline" id="show-audit" data-i18n="help.button">Zo is het berekend</button>
+          </div>
+        </div>
+
+        <section class="card search">
+          <form id="lookup" class="lookup" novalidate>
+            <label>
+              <span data-i18n="form.postcode">Postcode</span>
+              <input name="postcode" id="postcode" autocomplete="postal-code" placeholder="2011 RD" maxlength="7" required />
+            </label>
+            <label class="narrow">
+              <span data-i18n="form.number">Huisnummer</span>
+              <input name="number" id="number" inputmode="numeric" placeholder="2" maxlength="8" required />
+            </label>
+            <button type="submit" class="btn-primary" id="go" data-i18n="form.submit">Bekijk mijn lucht</button>
+          </form>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+          <div class="examples">
+            <span class="muted small" data-i18n="form.try">Probeer:</span>
+            <button type="button" class="chip" data-pc="2011RD" data-nr="2">Grote Markt 2</button>
+            <button type="button" class="chip" data-pc="2023CE" data-nr="10">Kleverparkweg 10</button>
+            <button type="button" class="chip" data-pc="2012PJ" data-nr="10">Zuiderhoutlaan 10</button>
+            <button type="button" class="chip" data-pc="1012JS" data-nr="1">Dam 1, Amsterdam</button>
+          </div>
+        </section>
+
+        <div id="result">
+          <section class="card empty">
+            <p data-i18n="empty">Vul je postcode en huisnummer in. Je ziet dan hoe schoon de lucht bij jou is, hoe dat zich verhoudt tot de rest van Haarlem en wat het betekent voor je gezondheid.</p>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <footer class="foot muted small" id="foot"></footer>
+
+    <script src="js/i18n.js"></script>
+    <script src="js/mock-data.js"></script>
+    <script src="js/analysis.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/address.js"></script>
+    <script src="js/address-page.js"></script>
+  </body>
+</html>

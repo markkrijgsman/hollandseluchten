@@ -289,6 +289,7 @@
   function applyChrome() {
     document.title = t("Luchtvraag · Hollandse Luchten (prototype)", "Luchtvraag · Hollandse Luchten (prototype)");
     document.getElementById("badge").textContent = t("Prototype · nepdata", "Prototype · mock data");
+    document.getElementById("address-link").textContent = t("Lucht op mijn adres", "Air at my address");
     document.getElementById("title").textContent = t("Stel je vraag over de luchtkwaliteit", "Ask your question about air quality");
     document.getElementById("lead").textContent = t(
       "Ik zet je vraag om in een analyse met de functies van Samen Analyseren, laat zien welke keuzes ik maak, en leg uit wat je wel en niet uit de uitkomst kunt concluderen.",
@@ -341,4 +342,6 @@
   });
 
   applyChrome();
+  const initial = new URLSearchParams(window.location.search).get("q");
+  if (initial) ask(initial);
 })();

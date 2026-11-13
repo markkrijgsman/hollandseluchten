@@ -27,6 +27,8 @@ body { margin: 0; }
 .brand { font-weight: 700; font-size: 1.15rem; }
 .brand span { font-weight: 400; opacity: 0.75; margin-left: 6px; }
 .top-actions { display: flex; align-items: center; gap: 10px; }
+.top-link { color: #fff; font-size: 0.9rem; font-weight: 600; text-decoration: none; margin-right: 6px; }
+.top-link:hover { text-decoration: underline; }
 .lang-toggle { display: flex; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 999px; overflow: hidden; }
 .lang-toggle button { background: transparent; color: #fff; padding: 4px 12px; border-radius: 0; font-size: 0.8rem; font-weight: 700; }
 .lang-toggle button.on { background: #fff; color: #0f2a44; }
