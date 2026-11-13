@@ -1,6 +1,6 @@
 (function () {
   "use strict";
-  const M = window.MOCK;
+  const M = window.MOCK || { sensors: [], reference: null };
   const A = window.A;
   const C = window.Charts;
   const I = window.I18N;
@@ -266,6 +266,22 @@
     </p>`;
   }
 
+  function trendPill(trend) {
+    if (!trend) return "";
+    const icon = trend.direction === "improving" ? "↓" : trend.direction === "worsening" ? "↑" : "→";
+    const cls = trend.direction === "improving" ? "trend-good" : trend.direction === "worsening" ? "trend-bad" : "trend-stable";
+    const label = {
+      improving: t("Verbetering", "Improving"),
+      worsening: t("Verslechtering", "Worsening"),
+      stable: t("Stabiel", "Stable"),
+    }[trend.direction];
+    const slope = Math.abs(trend.slope_ug_m3_per_day * 30).toFixed(2);
+    const title = trend.direction === "stable"
+      ? t("Geen duidelijke trend in het afgelopen jaar", "No clear trend over the past year")
+      : t(`${label}: ${slope} µg/m³ per maand`, `${label}: ${slope} µg/m³ per month`);
+    return `<span class="trend-pill ${cls}" title="${esc(title)}" aria-label="${esc(title)}">${icon} ${esc(label)}</span>`;
+  }
+
   // LAAG 1: Eén rustige kaart met het directe antwoord + kaartje
   function verdictCard(lk, r, apiRes) {
     const p = lk.place;
@@ -325,6 +341,12 @@
           <div class="fact-value"><span>${nearText}</span></div>
           <span class="fact-sub">${esc(nearLabel)}</span>
         </div>
+
+        ${r && r.trend ? `<div class="fact-box">
+          <span class="fact-label">${esc(t("Trend (afgelopen jaar)", "Trend (past year)"))}</span>
+          <div class="fact-value">${trendPill(r.trend)}</div>
+          <span class="fact-sub">${esc(t("Op basis van Luchtmeetnet-metingen", "Based on Luchtmeetnet measurements"))}</span>
+        </div>` : ""}
       </div>
 
       ${mapWidgetHtml()}
@@ -487,11 +509,14 @@
     const diff = r.mean - r.city;
     const rel = r.city ? Math.round((Math.abs(diff) / r.city) * 100) : 0;
     const same = Math.abs(diff) < 1.5;
+    const regionLabel = r.fromBackend
+      ? t("regionale meetstations", "regional monitoring stations")
+      : t("gemiddeld in Haarlem", "the Haarlem average");
     const subSummary = same
-      ? t("Ongeveer even schoon als gemiddeld in Haarlem", "About as clean as the Haarlem average")
+      ? t(`Ongeveer even schoon als ${regionLabel}`, `About as clean as ${regionLabel}`)
       : diff > 0
-        ? t(`${rel}% meer fijnstof dan gemiddeld in Haarlem`, `${rel}% more particulate matter than the Haarlem average`)
-        : t(`${rel}% minder fijnstof dan gemiddeld in Haarlem`, `${rel}% less particulate matter than the Haarlem average`);
+        ? t(`${rel}% meer fijnstof dan ${regionLabel}`, `${rel}% more particulate matter than ${regionLabel}`)
+        : t(`${rel}% minder fijnstof dan ${regionLabel}`, `${rel}% less particulate matter than ${regionLabel}`);
 
     const detail = same
       ? t(
@@ -522,7 +547,9 @@
       tick = (k) => `${A.monthShort(Number(k.slice(5, 7)) - 1)} '${k.slice(2, 4)}`;
     }
     const youName = t(`Jouw buurt (${r.near.s.naam})`, `Your spot (${r.near.s.naam})`);
-    const cityName = t("Gemiddelde Haarlem", "Haarlem average");
+    const cityName = r.fromBackend
+      ? t("Regionaal gemiddelde (meetnet)", "Regional average (monitoring network)")
+      : t("Gemiddelde Haarlem", "Haarlem average");
     const rows = r.perSensor.slice().sort((a, b) => b.mean - a.mean);
 
     return `<details class="drawer" id="vergelijking">
@@ -611,6 +638,45 @@
           ${yearRows.map(([n, k, v, ok]) => `<tr><td>${esc(n)}</td><td>${esc(k)}</td><td>${esc(v)}</td><td>${fmt(r.mean)} µg/m³</td><td>${status(ok)}</td></tr>`).join("")}
           ${dayRows.map(([n, k, v, ok, val]) => `<tr><td>${esc(n)}</td><td>${esc(k)}</td><td>${esc(v)}</td><td>${esc(val)}</td><td>${status(ok)}</td></tr>`).join("")}
         </tbody></table></div>
+      </div>
+    </details>`;
+  }
+
+  // LAAG 2D: Piekdagen — dagen boven de WHO-daggrens
+  function eventsDrawer(r) {
+    const ev = r && r.events;
+    if (!ev || !ev.n_days_with_data) return "";
+    const pct = ev.n_days_with_data ? Math.round(ev.share_above * 100) : 0;
+    const subSummary = t(
+      `${ev.n_events} dag(en) boven WHO-dagadvies (${ev.threshold} µg/m³) · ${pct}% van de gemeten dagen`,
+      `${ev.n_events} day(s) above WHO daily guideline (${ev.threshold} µg/m³) · ${pct}% of measured days`
+    );
+    const topEvents = (ev.events || []).slice(0, 10);
+    return `<details class="drawer" id="piekdagen">
+      <summary>
+        <div class="summary-text">
+          <span class="summary-title">${esc(t("Piekdagen — wanneer was de lucht ongezond?", "Peak days — when was the air unhealthy?"))}</span>
+          <span class="summary-sub">${esc(subSummary)}</span>
+        </div>
+        <span class="summary-tag">${esc(t("Piekdagen", "Peak days"))}</span>
+      </summary>
+      <div class="drawer-body">
+        <p>${esc(t(
+          `Het WHO-gezondheidsadvies voor PM2.5 is maximaal ${ev.threshold} µg/m³ per dag. Op de onderstaande dagen werd dit overschreden bij jou in de buurt.`,
+          `The WHO health guideline for PM2.5 is a maximum of ${ev.threshold} µg/m³ per day. On the days below, this was exceeded near you.`
+        ))}</p>
+        ${topEvents.length ? `<div class="table-wrap"><table class="norms"><thead><tr>
+          <th>${esc(t("Datum", "Date"))}</th>
+          <th>${esc(t("PM2.5 (µg/m³)", "PM2.5 (µg/m³)"))}</th>
+          <th>${esc(t("Boven WHO-grens", "Above WHO guideline"))}</th>
+        </tr></thead><tbody>
+          ${topEvents.map((e) => `<tr>
+            <td>${esc(A.longDate ? A.longDate(e.date) : e.date)}</td>
+            <td><b style="color:#ef7d32">${fmt(e.pm25)}</b></td>
+            <td>+${fmt(e.pm25 - ev.threshold)} µg/m³</td>
+          </tr>`).join("")}
+        </tbody></table></div>` : `<p class="muted small">${esc(t("Geen overschrijdingen gevonden in deze periode.", "No exceedances found in this period."))}</p>`}
+        ${ev.events && ev.events.length > 10 ? `<p class="muted small">${esc(t(`Toont de ${topEvents.length} hoogste dagwaarden van ${ev.n_events} in totaal.`, `Showing the ${topEvents.length} highest days out of ${ev.n_events} total.`))}</p>` : ""}
       </div>
     </details>`;
   }
@@ -796,6 +862,7 @@
         ${!r.tooFar ? healthDrawer(r) : ""}
         ${compareDrawer(r)}
         ${normsDrawer(r)}
+        ${eventsDrawer(r)}
         ${auditDrawer(ctx.audit, state.backendBundle)}
       </section>`;
 

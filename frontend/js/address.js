@@ -1,8 +1,17 @@
-// Adres opzoeken en de luchtkwaliteit op dat adres schatten. Het adres komt uit de
-// PDOK Locatieserver (echt); de metingen zijn de nepdata uit mock-data.js.
+// Adres opzoeken en de luchtkwaliteit op dat adres schatten.
+// Metingen komen uit de backend REST API (localhost:8000); bij afwezigheid
+// van de backend wordt gevallen op de ingebedde reference_measurements.parquet.
 (function () {
   "use strict";
-  const M = window.MOCK;
+  // Guard: when mock-data.js is not loaded, provide safe empty defaults so code
+  // that still references M doesn't crash. All real data comes from the backend.
+  const M = window.MOCK || {
+    sensors: [],
+    values: {},
+    reference: null,
+    days: [],
+    period: { start: "2025-01-01", end: "2026-09-30" },
+  };
   const A = window.A;
   const t = (nl, en) => window.I18N.t(nl, en);
 
@@ -464,6 +473,12 @@
       reproduce: `/pm25/compare?lat=${lat}&lon=${lon}&from=${yearStart}&to=${yearEnd}&radius_km=${effRadius}&against=eu`,
     };
 
+    const embeddedTrend = computeTrend(yearSeries);
+    const eventDays = yearSeries
+      .filter((p) => p.pm25 > NORMS.whoDay)
+      .map((p) => ({ date: p.time.slice(0, 10), pm25: p.pm25, uncertainty: 0, basis: p.basis }))
+      .sort((a, b) => b.pm25 - a.pm25);
+
     return {
       ok: true,
       fromEmbeddedParquet: true,
@@ -484,11 +499,48 @@
       compareEu,
       timeseries: tsRes.data,
       timeseriesRange: tsRes.range,
+      trend: embeddedTrend,
+      events: {
+        threshold: NORMS.whoDay,
+        events: eventDays,
+        n_events: eventDays.length,
+        n_days_with_data: yearSeries.length,
+        share_above: yearSeries.length ? eventDays.length / yearSeries.length : 0,
+      },
     };
   }
 
   async function fetchBackendPm25(lat, lon, date = "2026-09-15", radiusKm = 15) {
     return apiGet(`/pm25?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&date=${encodeURIComponent(date)}&radius_km=${encodeURIComponent(radiusKm)}`);
+  }
+
+  async function fetchTrend(lat, lon, from, to, radiusKm = 15) {
+    return apiGet(
+      `/pm25/trend?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&radius_km=${encodeURIComponent(radiusKm)}`,
+      10000
+    );
+  }
+
+  async function fetchEvents(lat, lon, from, to, radiusKm = 15, threshold = 15) {
+    return apiGet(
+      `/pm25/events?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&radius_km=${encodeURIComponent(radiusKm)}&threshold=${encodeURIComponent(threshold)}`,
+      10000
+    );
+  }
+
+  // Simple linear-regression trend from a time-series array [{ time, pm25 }]
+  function computeTrend(series) {
+    const pts = series.filter((p) => p.pm25 != null);
+    if (pts.length < 7) return null;
+    const n = pts.length;
+    const ys = pts.map((p) => p.pm25);
+    const xm = (n - 1) / 2;
+    const ym = ys.reduce((a, b) => a + b, 0) / n;
+    let num = 0, den = 0;
+    ys.forEach((y, i) => { num += (i - xm) * (y - ym); den += (i - xm) ** 2; });
+    const slope = den > 0 ? num / den : 0;
+    const direction = slope < -0.005 ? "improving" : slope > 0.005 ? "worsening" : "stable";
+    return { slope_ug_m3_per_day: slope, direction, period_mean: ym, n_days: n };
   }
 
   function shiftDate(isoDate, deltaDays) {
@@ -573,12 +625,14 @@
       ? (yearStation.data_from || "2025-01-01")
       : shiftDate(yearEnd, -364);
 
-    // 2. Haal parallel op: /pm25 (dagwaarde), /pm25/compare (WHO + EU), en /pm25/timeseries (grafiekreeks)
-    const [pmRes, whoRes, euRes, tsRes] = await Promise.all([
+    // 2. Haal parallel op: /pm25 (dagwaarde), /pm25/compare (WHO + EU), /pm25/timeseries, /pm25/trend, /pm25/events
+    const [pmRes, whoRes, euRes, tsRes, trendRes, eventsRes] = await Promise.all([
       fetchBackendPm25(lat, lon, latestDate, radiusKm),
       apiGet(`/pm25/compare?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(yearStart)}&to=${encodeURIComponent(yearEnd)}&radius_km=${encodeURIComponent(radiusKm)}&against=who`, 12000),
       apiGet(`/pm25/compare?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(yearStart)}&to=${encodeURIComponent(yearEnd)}&radius_km=${encodeURIComponent(radiusKm)}&against=eu`, 12000),
       fetchBackendTimeseries(lat, lon, latestDate, periodKey, radiusKm),
+      fetchTrend(lat, lon, yearStart, yearEnd, radiusKm),
+      fetchEvents(lat, lon, yearStart, yearEnd, radiusKm),
     ]);
 
     return {
@@ -596,6 +650,8 @@
       compareEu: euRes.ok ? euRes.data : null,
       timeseries: tsRes.ok ? tsRes.data : null,
       timeseriesRange: tsRes.range,
+      trend: trendRes.ok ? trendRes.data : null,
+      events: eventsRes.ok ? eventsRes.data : null,
     };
   }
 
@@ -682,6 +738,32 @@
       ? perSensor.reduce((acc, x) => acc + x.mean, 0) / perSensor.length
       : annualMean;
 
+    // Build a per-day regional average using ALL REAL_DATA stations with equal weighting.
+    // Distance-weighted would just reproduce the nearest station; equal-weight gives a true regional baseline.
+    let regionalDaily = est.map(() => annualMean);
+    let regionalMean = annualMean;
+    if (window.REAL_DATA && Array.isArray(window.REAL_DATA.stations) && window.REAL_DATA.stations.length) {
+      const R = window.REAL_DATA;
+      const rng2 = rangeForPeriodKey(bundle.latestDate, periodKey);
+      const allSeries = [];
+      for (let i = 0; i < R.days.length; i++) {
+        const d = R.days[i];
+        if (d < rng2.from || d > rng2.to) continue;
+        let total = 0, count = 0;
+        for (const st of R.stations) {
+          const v = R.daily_mean[st.id] && R.daily_mean[st.id][i];
+          if (v != null) { total += v; count++; }
+        }
+        if (count > 0) allSeries.push({ date: d, pm25: Math.round((total / count) * 100) / 100 });
+      }
+      if (allSeries.length) {
+        const dateMap = new Map(allSeries.map((p) => [p.date, p.pm25]));
+        regionalDaily = dates.map((d) => dateMap.get(d) ?? null);
+        const vals = allSeries.map((p) => p.pm25);
+        regionalMean = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100;
+      }
+    }
+
     return {
       fromBackend: true,
       backend: bundle,
@@ -692,18 +774,20 @@
       k: 1.0,
       est,
       mean: annualMean,
-       periodMean: ts && ts.summary ? ts.summary.mean : annualMean,
-      city: cityMean,
+      periodMean: ts && ts.summary ? ts.summary.mean : annualMean,
+      city: regionalMean,
       perSensor,
       allStations: stList,
-      cityDaily: est,
+      cityDaily: regionalDaily,
       ref: est,
-      refMean: cityMean,
+      refMean: regionalMean,
       latest,
       index,
       grade: g,
       daysOverWho,
       daysOverEu,
+      trend: bundle.trend || null,
+      events: bundle.events || null,
     };
   }
 
@@ -873,8 +957,10 @@
     locate,
     reverseGeocode,
     fetchBackendPm25,
-    fetchBackendBundle,
     fetchBackendTimeseries,
+    fetchBackendBundle,
+    fetchTrend,
+    fetchEvents,
     buildResultFromBackend,
     analyse,
     lki,

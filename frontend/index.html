@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Stel een vraag · Hollandse Luchten (prototype)</title>
+    <title>Stel een vraag · Hollandse Luchten</title>
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -32,46 +32,38 @@
         <a href="adres.html" id="side-address">Mijn adres</a>
         <a href="index.html" class="on" id="side-ask">Stel een vraag</a>
         <hr />
-        <h2 id="side-page">Op deze pagina</h2>
-        <a href="#vraag" id="side-question">Je vraag</a>
-        <a href="#begrepen" id="side-plan">Zo heb ik het begrepen</a>
-        <a href="#antwoord" id="side-answer">Antwoord</a>
-        <a href="#audit" id="side-audit">Audit trail</a>
+        <button type="button" id="chat-new" class="btn-ghost chat-new-btn">Nieuw gesprek</button>
       </aside>
 
-      <main class="main">
+      <main class="main chat-main">
         <div class="page-head">
           <div>
-            <h1 id="title">Stel je vraag over de luchtkwaliteit</h1>
-            <p id="lead" class="lead"></p>
+            <h1 id="chat-title">Stel je vraag over de luchtkwaliteit</h1>
+            <p id="chat-lead" class="lead"></p>
           </div>
         </div>
 
-        <section class="card search" id="vraag">
-          <form id="ask" class="ask">
-            <input id="q" type="text" autocomplete="off" aria-label="Vraag" />
-            <button type="submit" id="submit" class="btn-primary">Analyseer</button>
-          </form>
-          <div class="examples">
-            <span id="try" class="muted small">Probeer:</span>
-            <span id="examples" class="chips"></span>
-            <button type="button" id="more" class="btn-ghost" aria-expanded="false"></button>
-          </div>
-        </section>
+        <div id="chat-thread" class="chat-thread" aria-live="polite" aria-label="Gesprek"></div>
 
-        <div id="result"></div>
+        <div id="chat-empty" class="chat-empty">
+          <p id="example-label" class="muted small">Probeer een van deze vragen:</p>
+          <div id="example-chips" class="chips"></div>
+        </div>
+
+        <form id="chat-form" class="chat-form-bar">
+          <input
+            id="chat-input"
+            type="text"
+            autocomplete="off"
+            aria-label="Je vraag"
+            placeholder="Typ je vraag hier…"
+          />
+          <button type="submit" id="chat-submit" class="btn-primary">Verstuur</button>
+        </form>
       </main>
     </div>
 
-    <footer id="foot" class="foot muted small"></footer>
-
     <script src="js/i18n.js"></script>
-    <script src="js/real-data.js"></script>
-    <script src="js/mock-data.js"></script>
-    <script src="js/analysis.js"></script>
-    <script src="js/charts.js"></script>
-    <script src="js/planner.js"></script>
-    <script src="js/intents.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/chat.js"></script>
   </body>
 </html>
