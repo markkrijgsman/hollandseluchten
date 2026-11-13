@@ -90,14 +90,25 @@ import duckdb, json, csv
 
 ---
 
-## 5. Deploying to Firebase Hosting (Optional)
+## 5. Deploying to Firebase Hosting
 
-The public live demo is hosted at:
+The public live demo is hosted on Firebase project `sample-bumps-firebase-ai-app` at:
 - [https://hollandse-luchten-analyse.web.app/adres.html](https://hollandse-luchten-analyse.web.app/adres.html)
 - [https://hollandse-luchten-analyse.web.app/index.html](https://hollandse-luchten-analyse.web.app/index.html)
 
-To deploy an updated `frontend/` build (requires Firebase project access):
+### First-Time Setup (Once per Laptop)
+Log in with the Google account that has **Editor** permissions on the Firebase project:
 
 ```bash
-npx -y firebase-tools@latest deploy --only hosting
+npx -y firebase-tools@latest login
 ```
+
+### Deploy Frontend Changes
+From the root of the `hollandseluchten` repository (where `firebase.json` and `.firebaserc` live), run:
+
+```bash
+npx -y firebase-tools@latest deploy --only hosting --project sample-bumps-firebase-ai-app
+```
+*(Or simply `npx -y firebase-tools@latest deploy --only hosting` after pulling `.firebaserc`.)*
+
+
