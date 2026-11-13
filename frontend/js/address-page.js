@@ -275,11 +275,15 @@
     const v = concernVerdict(ix, r, p.label);
 
     const g = r && !r.tooFar ? r.grade : livePm != null ? D.grade(livePm) : D.grade(10);
+    const refStations = apiRes && apiRes.ok && apiRes.data && apiRes.data.reference && apiRes.data.reference.stations || [];
     const nearText = r && !r.tooFar
       ? `${esc(r.near.s.naam)} (${fmt(r.near.km)} km)`
-      : apiRes && apiRes.ok && apiRes.data && apiRes.data.reference && apiRes.data.reference.stations[0]
-        ? `${esc(apiRes.data.reference.stations[0].name)} (${fmt(apiRes.data.reference.stations[0].distance_km)} km)`
+      : refStations.length
+        ? refStations.map(s => `${esc(s.name)} (${fmt(s.distance_km)} km)`).join(", ")
         : esc(r && r.near ? `${r.near.s.naam} (${fmt(r.near.km)} km)` : "Luchtmeetnet");
+    const nearLabel = refStations.length > 1
+      ? t(`${refStations.length} meetstations gebruikt`, `${refStations.length} monitoring stations used`)
+      : t("Dichtstbijzijnde meetpunt", "Nearest monitoring point");
 
     const q = r && !r.tooFar
       ? t(`Wat is de gemiddelde luchtkwaliteit in ${r.near.s.buurt}?`, `What is the average air quality in ${r.near.s.buurt}?`)
@@ -319,7 +323,7 @@
         <div class="fact-box">
           <span class="fact-label">${esc(t("Gemeten bij", "Measured at"))}</span>
           <div class="fact-value"><span>${nearText}</span></div>
-          <span class="fact-sub">${esc(t("Dichtstbijzijnde meetpunt", "Nearest monitoring point"))}</span>
+          <span class="fact-sub">${esc(nearLabel)}</span>
         </div>
       </div>
 
@@ -331,6 +335,121 @@
         <span class="muted">${esc(t("Wil je zelf een vraag stellen over de metingen?", "Want to ask your own question about the measurements?"))}</span>
         <a class="btn-outline" href="index.html?q=${encodeURIComponent(q)}">${esc(t("Stel een vraag →", "Ask a question →"))}</a>
       </div>
+    </section>`;
+  }
+
+  // Health card: Air Quality & Your Health
+  function healthCard(r, bundle) {
+    const WHO_DAY = 15;
+    const WHO_YEAR = 5;
+    const SCALE_MAX = 50;
+
+    const dailyPm = bundle && bundle.ok && bundle.pm25 ? bundle.pm25.pm25 : null;
+    const hasRange = r && !r.tooFar;
+    const periodKey = hasRange && r.period ? r.period.key : state.period;
+    const isYear = periodKey === "year";
+
+    const periodMean = hasRange ? (r.periodMean != null ? r.periodMean : r.mean) : null;
+    const displayValue = periodMean != null ? periodMean : dailyPm;
+    if (displayValue == null) return "";
+
+    const isAbove = displayValue > WHO_DAY;
+    const pct = Math.min((displayValue / SCALE_MAX) * 100, 100);
+    const markerPct = (WHO_DAY / SCALE_MAX) * 100;
+    const fillColor = isAbove ? "#ef7d32" : "#2f9e6b";
+
+    const daysOverWho = isYear && r ? r.daysOverWho : null;
+    const annualMean = isYear && r && r.mean != null ? r.mean : null;
+
+    let displayLabel;
+    if (hasRange && periodMean != null) {
+      displayLabel = isYear
+        ? t("Jaargemiddelde PM2.5", "Annual mean PM2.5")
+        : t("Gemiddelde PM2.5 (geselecteerde periode)", "Average PM2.5 (selected period)");
+    } else {
+      displayLabel = t("PM2.5 daggemiddelde", "PM2.5 daily average");
+    }
+
+    let interpretation;
+    if (hasRange && periodMean != null) {
+      if (isYear) {
+        const days = daysOverWho != null ? daysOverWho : 0;
+        const dayWord = (n) => t(`${n} ${n === 1 ? "dag" : "dagen"}`, `${n} ${n === 1 ? "day" : "days"}`);
+        const annAbove = annualMean != null && annualMean > WHO_YEAR;
+        if (annAbove) {
+          interpretation = t(
+            `Het jaargemiddelde PM2.5 (${fmt(displayValue)} µg/m³) ligt boven het WHO-jaaradvies van ${WHO_YEAR} µg/m³. Er waren ${dayWord(days)} waarop de concentratie boven het WHO-dagadvies van ${WHO_DAY} µg/m³ lag. Blootstelling aan fijnstof kan je luchtwegen en hart-vaatstelsel aantasten, zeker bij langdurige of frequente blootstelling.`,
+            `The annual mean PM2.5 (${fmt(displayValue)} µg/m³) is above the WHO annual guideline of ${WHO_YEAR} µg/m³. There were ${dayWord(days)} on which the concentration exceeded the WHO daily guideline of ${WHO_DAY} µg/m³. Exposure to fine particles can affect your respiratory and cardiovascular health, particularly if exposure is frequent or prolonged.`
+          );
+        } else {
+          interpretation = t(
+            `Het jaargemiddelde PM2.5 (${fmt(displayValue)} µg/m³) voldoet aan het WHO-jaaradvies van ${WHO_YEAR} µg/m³. Er waren ${dayWord(days)} waarop de concentratie boven het WHO-dagadvies van ${WHO_DAY} µg/m³ lag. Lagere blootstelling aan fijnstof is over het algemeen beter voor je gezondheid, al zijn gezondheidseffecten ook bij lage concentraties niet volledig uit te sluiten.`,
+            `The annual mean PM2.5 (${fmt(displayValue)} µg/m³) meets the WHO annual guideline of ${WHO_YEAR} µg/m³. There were ${dayWord(days)} on which the concentration exceeded the WHO daily guideline of ${WHO_DAY} µg/m³. Lower exposure to fine particles is generally better for health, although health effects cannot be completely ruled out at lower concentrations.`
+          );
+        }
+      } else {
+        if (isAbove) {
+          interpretation = t(
+            `Het gemiddelde PM2.5 over de geselecteerde periode (${fmt(displayValue)} µg/m³) ligt boven het WHO-dagadvies van ${WHO_DAY} µg/m³. Blootstelling aan fijnstof kan je luchtwegen en hart-vaatstelsel aantasten, zeker bij langdurige of frequente blootstelling.`,
+            `The average PM2.5 over the selected period (${fmt(displayValue)} µg/m³) is above the WHO daily guideline of ${WHO_DAY} µg/m³. Exposure to fine particles can affect your respiratory and cardiovascular health, particularly if exposure is frequent or prolonged.`
+          );
+        } else {
+          interpretation = t(
+            `Het gemiddelde PM2.5 over de geselecteerde periode (${fmt(displayValue)} µg/m³) voldoet aan het WHO-dagadvies van ${WHO_DAY} µg/m³. Lagere blootstelling aan fijnstof is over het algemeen beter voor je gezondheid, al zijn gezondheidseffecten ook bij lage concentraties niet volledig uit te sluiten.`,
+            `The average PM2.5 over the selected period (${fmt(displayValue)} µg/m³) is at or below the WHO daily guideline of ${WHO_DAY} µg/m³. Lower exposure to fine particles is generally better for health, although health effects cannot be completely ruled out at lower concentrations.`
+          );
+        }
+      }
+    } else {
+      if (isAbove) {
+        interpretation = t(
+          `De geschatte PM2.5-concentratie van vandaag ligt boven het WHO-24-uursadvies van ${WHO_DAY} µg/m³. Blootstelling aan fijnstof kan je luchtwegen en hart-vaatstelsel aantasten, zeker bij langdurige of frequente blootstelling.`,
+          `Today's estimated PM2.5 concentration is above the WHO 24-hour guideline level of ${WHO_DAY} µg/m³. Exposure to fine particles can affect your respiratory and cardiovascular health, particularly if exposure is frequent or prolonged.`
+        );
+      } else {
+        interpretation = t(
+          `De PM2.5-concentratie van vandaag voldoet aan het WHO-24-uursadvies van ${WHO_DAY} µg/m³. Lagere blootstelling aan fijnstof is over het algemeen beter voor je gezondheid, al zijn gezondheidseffecten ook bij lage concentraties niet volledig uit te sluiten.`,
+          `Today's PM2.5 concentration is at or below the WHO 24-hour guideline level of ${WHO_DAY} µg/m³. Lower exposure to fine particles is generally better for health, although health effects cannot be completely ruled out at lower concentrations.`
+        );
+      }
+    }
+
+    const heartSvg = `<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" class="health-heart" focusable="false"><path d="M10 17.5S2 12 2 7a4.5 4.5 0 0 1 8-2.83A4.5 4.5 0 0 1 18 7c0 5-8 10.5-8 10.5z" fill="currentColor"/></svg>`;
+
+    return `<section class="card health-card" aria-label="${esc(t("Luchtkwaliteit en je gezondheid", "Air Quality & Your Health"))}">
+      <div class="health-card-title">
+        ${heartSvg}
+        <h2>${esc(t("Luchtkwaliteit & je gezondheid", "Air Quality & Your Health"))}</h2>
+      </div>
+
+      <div class="health-concentration">
+        <span class="health-value" style="color:${fillColor}">${fmt(displayValue)}</span>
+        <span class="health-unit">µg/m³</span>
+        <span class="health-concentration-label">${esc(displayLabel)}</span>
+      </div>
+
+      <div class="health-bar-wrap" role="img" aria-label="${esc(t(`PM2.5: ${fmt(displayValue)} µg/m³ — WHO-dagadvies: ${WHO_DAY} µg/m³`, `PM2.5: ${fmt(displayValue)} µg/m³ — WHO daily guideline: ${WHO_DAY} µg/m³`))}">
+        <div class="health-bar-track">
+          <div class="health-bar-fill" style="width:${pct.toFixed(1)}%;background:${fillColor}"></div>
+          <div class="health-bar-marker" style="left:${markerPct.toFixed(1)}%">
+            <span class="health-bar-marker-label">${esc(t(`WHO-advies: ${WHO_DAY} µg/m³`, `WHO guideline: ${WHO_DAY} µg/m³`))}</span>
+          </div>
+        </div>
+        <div class="health-bar-endpoints">
+          <span class="muted small">0</span>
+          <span class="muted small">${SCALE_MAX} µg/m³</span>
+        </div>
+      </div>
+
+      <div class="health-info">
+        <h3>${esc(t("Wat betekent dit?", "What does this mean?"))}</h3>
+        <p>${esc(interpretation)}</p>
+      </div>
+
+      <p class="health-disclaimer muted small">${esc(t(
+        `Dit meetgegeven voorspelt geen individuele gezondheidsuitkomsten. Het WHO-24-uursadvies wordt beoordeeld op basis van het jaarlijkse 99e percentiel, niet op één enkele dag. Referentie: WHO Global Air Quality Guidelines (2021).`,
+        `This measurement does not predict individual health outcomes. The WHO 24-hour guideline is assessed using the annual 99th percentile, not a single day. Reference: WHO Global Air Quality Guidelines (2021).`
+      ))}</p>
     </section>`;
   }
 
@@ -668,6 +787,7 @@
 
     out.innerHTML =
       verdictCard(lk, r, state.backendBundle && state.backendBundle.pm25 ? { ok: true, data: state.backendBundle.pm25 } : null) +
+      healthCard(r, state.backendBundle) +
       `<section class="drilldown-section" aria-labelledby="drilldown-heading">
         <div class="drilldown-head">
           <h2 id="drilldown-heading">${esc(t("Meer weten? Klik om verder te kijken", "Want to know more? Click to explore further"))}</h2>
@@ -699,10 +819,14 @@
     const map = L.map(el, { scrollWheelZoom: false }).setView([p.lat, p.lon], 14);
     leafletMap = map;
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
-      maxZoom: 19,
-    }).addTo(map);
+    if (window.L.gridLayer && window.L.gridLayer.googleMutant) {
+      L.gridLayer.googleMutant({ type: "roadmap" }).addTo(map);
+    } else {
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
+        maxZoom: 19,
+      }).addTo(map);
+    }
 
     const bounds = [[p.lat, p.lon]];
 
