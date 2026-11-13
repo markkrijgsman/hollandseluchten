@@ -3,7 +3,7 @@ import os
 import tomllib
 from pathlib import Path
 
-DEFAULT_FILE = Path(__file__).resolve().parent.parent / "config" / "guidelines.toml"
+DEFAULT_FILE = Path(__file__).resolve().parents[2] / "config" / "guidelines.toml"
 REQUIRED = {"id", "name", "type", "limit", "source", "verified"}
 
 

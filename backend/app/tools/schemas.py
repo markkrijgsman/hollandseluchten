@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .geo import in_netherlands
+from ..analysis.geo import in_netherlands
 
 MAX_RANGE_DAYS = {"day": 366, "hour": 31}
 
@@ -42,14 +42,19 @@ class RangeRequest(PointRequest):
         return self
 
 
+    def check_length(self, resolution: str) -> None:
+        limit = MAX_RANGE_DAYS[resolution]
+        if (self.end - self.start).days + 1 > limit:
+            raise ValueError(f"Range too long for resolution '{resolution}' (max {limit} days)")
+
+
 class TimeseriesRequest(RangeRequest):
     """PM2.5 per day (max 366 days) or per hour (max 31 days) at a coordinate."""
     resolution: Literal["day", "hour"] = "day"
 
     @model_validator(mode="after")
     def _length(self):
-        if (self.end - self.start).days + 1 > MAX_RANGE_DAYS[self.resolution]:
-            raise ValueError(f"Range too long for resolution '{self.resolution}' (max {MAX_RANGE_DAYS[self.resolution]} days)")
+        self.check_length(self.resolution)
         return self
 
 
@@ -59,8 +64,7 @@ class CompareRequest(RangeRequest):
 
     @model_validator(mode="after")
     def _length(self):
-        if (self.end - self.start).days + 1 > MAX_RANGE_DAYS["day"]:
-            raise ValueError(f"Range too long (max {MAX_RANGE_DAYS['day']} days)")
+        self.check_length("day")
         return self
 
 

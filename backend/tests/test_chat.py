@@ -3,9 +3,10 @@ import os
 
 import pytest
 
-import app.tools as tools_module
-from app.chat import chat as run_chat, ChatRequest, _for_model, get_llm, tool_specs
-from app.fake_llm import FakeLLM
+import app.tools.registry as tools_module
+from app.chat import get_llm
+from app.chat.engine import _for_model, tool_specs
+from app.chat.fake_llm import FakeLLM
 from app.main import app
 from test_api import DAY, LAT, LON, make_client, sensor_parquet  # noqa: F401
 

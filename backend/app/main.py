@@ -1,14 +1,15 @@
-"""REST API. Every endpoint validates its query with a model from schemas.py and runs the matching tool."""
+"""REST API. Every endpoint validates its query with a model from tools/schemas.py and runs the matching tool."""
 from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 
-from .schemas import (CompareRequest, CoverageRequest, GeocodeRequest, Pm25Request, StationsRequest,
-                      TimeseriesRequest)
+from .analysis.service import Pm25Service
 from .chat import LLM, ChatRequest, chat as run_chat, get_llm
-from .service import Pm25Service, Settings
-from .tools import TOOLS, ToolError, execute
+from .settings import Settings
+from .tools.registry import TOOLS, ToolError, execute
+from .tools.schemas import (CompareRequest, CoverageRequest, GeocodeRequest, Pm25Request, StationsRequest,
+                            TimeseriesRequest)
 
 DESCRIPTION = """
 Air-pollution (PM2.5) answers for residents, with a transparent audit trail.

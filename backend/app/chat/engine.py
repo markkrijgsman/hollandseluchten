@@ -4,59 +4,19 @@ The LLM never computes numbers. Every tool call and its full result (with audit)
 Stateless: the client sends `history` back with each request.
 """
 import json
-import os
 from datetime import date
-from typing import Any, Protocol
+from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from .service import Pm25Service
-from .tools import TOOLS, ToolError, execute
+from ..analysis.service import Pm25Service
+from ..tools.registry import TOOLS, ToolError, execute
+from .llm import LLM
+from .prompt import SYSTEM_PROMPT
 
 MAX_STEPS = 6
 MAX_MODEL_SERIES_POINTS = 31
 
-SYSTEM_PROMPT = """You help residents of the Netherlands understand air pollution (PM2.5) near them.
-Today is {today}.
-
-Rules:
-- Get every number from the tools. Never estimate, recall or calculate air-quality values yourself.
-- Residents give place names, not coordinates: use geocode first. If the place is ambiguous or the period is unclear, ask a short question and call no other tool.
-- The data is not live. If someone asks about 'now', 'today' or 'currently' (or gives no period), call stations for that place, use the latest data_to of the nearby stations, and say that this is the latest available day.
-- In every answer state: the value with its unit, the period, what it is based on (sensors or official stations), the uncertainty, and the most relevant limitation from the tool result.
-- If a tool returns an error, explain it plainly and suggest what to try instead.
-- Reply in the language of the question, in plain language without jargon. Keep it short.
-"""
-
-
-class LLM(Protocol):
-    name: str
-
-    def create(self, *, system: str, messages: list[dict], tools: list[dict]) -> dict:
-        """Return {"content": [text / tool_use blocks as dicts]}."""
-
-
-class AnthropicLLM:
-    def __init__(self, model: str | None = None):
-        import anthropic
-        self.client = anthropic.Anthropic()
-        self.model = model or os.environ.get("HL_CHAT_MODEL", "claude-sonnet-5-5")
-        self.name = self.model
-
-    def create(self, *, system, messages, tools):
-        resp = self.client.messages.create(model=self.model, max_tokens=1500, system=system,
-                                           messages=messages, tools=tools)
-        return {"content": [b.model_dump(exclude_none=True) for b in resp.content
-                            if b.type in ("text", "tool_use")]}
-
-
-def get_llm() -> LLM:
-    """HL_LLM=fake forces the rule-based stub; otherwise Claude when ANTHROPIC_API_KEY is set, else the stub."""
-    mode = os.environ.get("HL_LLM", "")
-    if mode == "fake" or (mode != "anthropic" and not os.environ.get("ANTHROPIC_API_KEY")):
-        from .fake_llm import FakeLLM
-        return FakeLLM()
-    return AnthropicLLM()
 
 
 class ChatRequest(BaseModel):

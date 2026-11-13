@@ -1,5 +1,9 @@
 """Geographic helpers."""
 from math import asin, cos, radians, sin, sqrt
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 EARTH_RADIUS_KM = 6371.0088
 
@@ -13,3 +17,9 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 def in_netherlands(lat: float, lon: float) -> bool:
     """Coarse bounding box around the Netherlands."""
     return 50.7 <= lat <= 53.7 and 3.2 <= lon <= 7.3
+
+
+def distances_km(df: "pd.DataFrame", lat: float, lon: float) -> "pd.Series":
+    """Distance from (lat, lon) to each row of a frame with `lat` and `lon` columns."""
+    import pandas as pd
+    return pd.Series([haversine_km(lat, lon, la, lo) for la, lo in zip(df["lat"], df["lon"])], index=df.index)

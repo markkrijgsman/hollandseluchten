@@ -3,7 +3,7 @@ import json
 import subprocess
 from pathlib import Path
 
-R_SCRIPT = Path(__file__).resolve().parent.parent / "r" / "analysis.R"
+R_SCRIPT = Path(__file__).resolve().parents[2] / "r" / "analysis.R"
 
 
 class RError(RuntimeError):

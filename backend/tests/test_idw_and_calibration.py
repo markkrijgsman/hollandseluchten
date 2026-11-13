@@ -5,10 +5,12 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from app.data import SensorRepository
-from app.geo import haversine_km
-from app.rbridge import run_r_analysis
-from app.service import MIN_DISTANCE_KM, Pm25Service, Settings
+from app.data.repositories import SensorRepository
+from app.analysis.geo import haversine_km
+from app.integrations.r_bridge import run_r_analysis
+from app.analysis.constants import MIN_DISTANCE_KM
+from app.analysis.service import Pm25Service
+from app.settings import Settings
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT.parent.parent / "HackathonHollandseLuchten" / "data"
