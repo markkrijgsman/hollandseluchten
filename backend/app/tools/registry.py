@@ -10,16 +10,29 @@ from ..analysis.errors import NoDataError
 from ..analysis.models import (
     CompareResponse,
     CoverageResponse,
+    EventsResponse,
     Pm25Response,
     Reproducible,
     StationsResponse,
     TimeseriesResponse,
+    TrendResponse,
+    WeekdayResponse,
 )
 from ..analysis.service import Pm25Service
 from ..integrations.pdok import GeocodeError, geocode
 from ..integrations.r_bridge import RError
 from .responses import Candidate, GeocodeResponse
-from .schemas import CompareRequest, CoverageRequest, GeocodeRequest, Pm25Request, StationsRequest, TimeseriesRequest
+from .schemas import (
+    CompareRequest,
+    CoverageRequest,
+    EventsRequest,
+    GeocodeRequest,
+    Pm25Request,
+    StationsRequest,
+    TimeseriesRequest,
+    TrendRequest,
+    WeekdayRequest,
+)
 
 
 class ToolError(Exception):
@@ -67,6 +80,12 @@ TOOLS: dict[str, Tool] = {t.name: t for t in [
     Tool("pm25_timeseries", "/pm25/timeseries", TimeseriesRequest, TimeseriesResponse,
          lambda s, p: s.timeseries(p.lat, p.lon, p.start, p.end, p.resolution, p.radius_km, p.cutoff, p.min_hours)),
     Tool("pm25_compare", "/pm25/compare", CompareRequest, CompareResponse, _compare),
+    Tool("pm25_weekday", "/pm25/weekday", WeekdayRequest, WeekdayResponse,
+         lambda s, p: s.weekday(p.lat, p.lon, p.start, p.end, p.radius_km, p.cutoff, p.min_hours)),
+    Tool("pm25_trend", "/pm25/trend", TrendRequest, TrendResponse,
+         lambda s, p: s.trend(p.lat, p.lon, p.start, p.end, p.radius_km, p.cutoff, p.min_hours)),
+    Tool("pm25_events", "/pm25/events", EventsRequest, EventsResponse,
+         lambda s, p: s.events(p.lat, p.lon, p.start, p.end, p.threshold, p.radius_km, p.cutoff, p.min_hours)),
 ]}
 
 

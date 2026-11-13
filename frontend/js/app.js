@@ -26,6 +26,10 @@
           badge.style.color = "#258758";
           badge.style.borderColor = "#b7e1cd";
         }
+        fetch(`${apiBase()}/guidelines`, { signal: AbortSignal.timeout(1500) })
+          .then((r) => r.ok ? r.json() : null)
+          .then((norms) => { if (norms) document.dispatchEvent(new CustomEvent("hl:norms", { detail: norms })); })
+          .catch(() => {});
         return;
       }
     } catch (_) {
@@ -277,6 +281,10 @@
   }
 
   function answerCard(res, audit) {
+    const saCount = (audit.stappen || []).filter((s) => s.bron === "Samen Analyseren").length;
+    const saBadge = saCount > 0
+      ? `<div class="sa-inline"><span class="badge sa">Samen Analyseren</span> ${saCount} ${esc(t("gevalideerde functies gebruikt", "validated function(s) used"))} · <a href="#audit">${esc(t("bekijk audit trail ↓", "see audit trail ↓"))}</a></div>`
+      : "";
     return `<section class="card answer" id="antwoord"><h2><span class="num">2</span>${esc(t("Antwoord", "Answer"))}</h2>
       <p class="short">${esc(res.short)}</p>
       ${res.meaning ? `<div class="meaning"><h3>${esc(t("Wat betekent dit voor jou?", "What does this mean for you?"))}</h3>${res.meaning}</div>` : `<div>${res.body}</div>`}
@@ -287,6 +295,7 @@
               .join("")}</div></div>`
           : ""
       }
+      ${saBadge}
     </section>
     ${
       res.meaning

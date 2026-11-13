@@ -6,7 +6,17 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.language_models import BaseChatModel
 
-from .analysis.models import CompareResponse, CoverageResponse, Pm25Response, StationsResponse, TimeseriesResponse
+from .analysis.models import (
+    CompareResponse,
+    CoverageResponse,
+    EventsResponse,
+    GuidelinesNorms,
+    Pm25Response,
+    StationsResponse,
+    TimeseriesResponse,
+    TrendResponse,
+    WeekdayResponse,
+)
 from .analysis.service import Pm25Service
 from .chat import ChatRequest, get_chat_model
 from .chat import chat as run_chat
@@ -16,10 +26,13 @@ from .tools.responses import GeocodeResponse
 from .tools.schemas import (
     CompareRequest,
     CoverageRequest,
+    EventsRequest,
     GeocodeRequest,
     Pm25Request,
     StationsRequest,
     TimeseriesRequest,
+    TrendRequest,
+    WeekdayRequest,
 )
 
 DESCRIPTION = """
@@ -68,6 +81,12 @@ def coverage(p: Annotated[CoverageRequest, Query()], service: Service):
     return run("coverage", p, service)
 
 
+@app.get("/guidelines", response_model=GuidelinesNorms,
+         description="PM2.5 norm values (WHO and EU annual/daily limits) derived from the loaded guideline sets.")
+def guidelines(service: Service):
+    return service.norms().model_dump()
+
+
 @app.get("/stations", response_model=StationsResponse, description=TOOLS["stations"].description)
 def stations(p: Annotated[StationsRequest, Query()], service: Service):
     return run("stations", p, service)
@@ -86,6 +105,21 @@ def pm25_timeseries(p: Annotated[TimeseriesRequest, Query()], service: Service):
 @app.get("/pm25/compare", response_model=CompareResponse, description=TOOLS["pm25_compare"].description)
 def pm25_compare(p: Annotated[CompareRequest, Query()], service: Service):
     return run("pm25_compare", p, service)
+
+
+@app.get("/pm25/weekday", response_model=WeekdayResponse, description=TOOLS["pm25_weekday"].description)
+def pm25_weekday(p: Annotated[WeekdayRequest, Query()], service: Service):
+    return run("pm25_weekday", p, service)
+
+
+@app.get("/pm25/trend", response_model=TrendResponse, description=TOOLS["pm25_trend"].description)
+def pm25_trend(p: Annotated[TrendRequest, Query()], service: Service):
+    return run("pm25_trend", p, service)
+
+
+@app.get("/pm25/events", response_model=EventsResponse, description=TOOLS["pm25_events"].description)
+def pm25_events(p: Annotated[EventsRequest, Query()], service: Service):
+    return run("pm25_events", p, service)
 
 
 @app.post("/chat", description="Ask a question in plain language. Send the returned `history` back with the next message for follow-ups.")

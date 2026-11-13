@@ -130,6 +130,14 @@ class CompareResponse(Analysis):
     summary: SeriesSummary
 
 
+class GuidelinesNorms(Model):
+    """Frontend-ready norm values derived from the loaded guideline sets."""
+    who: float = Field(description="WHO 2021 annual mean (ug/m3)")
+    eu2030: float = Field(description="EU Directive 2024/2881 annual mean, applies from 2030 (ug/m3)")
+    euNow: float = Field(description="EU Directive 2008/50/EC annual mean, current (ug/m3)")
+    who_daily: float = Field(description="WHO 2021 24-hour mean (ug/m3)")
+
+
 class SourceCoverage(Model):
     from_: str = Field(alias="from")
     to: str
@@ -165,3 +173,53 @@ class StationsResponse(Reproducible):
     count: int
     stations: list[StationInfo]
     limitations: list[str]
+
+
+class WeekdayGroup(Model):
+    n_days: int
+    mean: float
+    min: float
+    max: float
+
+
+class WeekdayResponse(Reproducible):
+    location: Location
+    radius_km: float
+    unit: str
+    weekday: WeekdayGroup
+    weekend: WeekdayGroup
+    difference: float
+    limitations: list[str]
+    audit: list[AuditStep]
+
+
+class TrendResponse(Reproducible):
+    location: Location
+    radius_km: float
+    unit: str
+    slope_ug_m3_per_day: float
+    direction: Literal["improving", "worsening", "stable"]
+    period_mean: float
+    n_days: int
+    limitations: list[str]
+    audit: list[AuditStep]
+
+
+class EventDay(Model):
+    date: str
+    pm25: float
+    uncertainty: float
+    basis: Basis
+
+
+class EventsResponse(Reproducible):
+    location: Location
+    radius_km: float
+    unit: str
+    threshold: float
+    events: list[EventDay]
+    n_events: int
+    n_days_with_data: int
+    share_above: float
+    limitations: list[str]
+    audit: list[AuditStep]
