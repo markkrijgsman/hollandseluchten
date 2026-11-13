@@ -17,8 +17,11 @@ ERROR_PREFIXES = ("Error ", "Invalid input", "Unknown tool")
 
 
 def for_model(envelope: dict) -> dict:
-    """What the LLM sees: no audit, and long series replaced by the summary (the client gets everything)."""
+    """What the LLM sees: no audit, `considerations` instead of the duplicate `limitations` strings, and long series
+    replaced by the summary (the client gets everything)."""
     out = {k: v for k, v in envelope.items() if k != "audit"}
+    if "considerations" in out:
+        out.pop("limitations", None)
     series = out.get("series")
     if series and len(series) > MAX_MODEL_SERIES_POINTS:
         out["series"] = f"{len(series)} points omitted; use summary"

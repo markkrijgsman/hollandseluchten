@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 from pydantic import BaseModel
 
+from ..analysis.considerations import evaluate
 from ..analysis.errors import NoDataError
 from ..analysis.models import (
     CompareResponse,
@@ -46,10 +47,15 @@ def _compare(s: Pm25Service, p: CompareRequest) -> CompareResponse:
     return s.compare(p.lat, p.lon, p.start, p.end, p.against, p.radius_km, p.cutoff, p.min_hours)
 
 
-def _geocode(_: Pm25Service, p: GeocodeRequest) -> GeocodeResponse:
+def _geocode(s: Pm25Service, p: GeocodeRequest) -> GeocodeResponse:
+    candidates = [Candidate(**c) for c in geocode(p.q, p.limit)]
+    facts = {"place_query": p.q, "place_candidates": len(candidates),
+             "place_chosen": candidates[0].name if candidates else None,
+             "place_alternatives": "; ".join(c.name for c in candidates[1:])}
+    considerations = evaluate(s.rules, facts, scope="place")
     return GeocodeResponse(
-        source="PDOK Locatieserver", candidates=[Candidate(**c) for c in geocode(p.q, p.limit)],
-        limitations=["Several candidates means the query is ambiguous: ask the user which one is meant."])
+        source="PDOK Locatieserver", chosen=candidates[0] if candidates else None, candidates=candidates,
+        considerations=considerations, limitations=[c.message for c in considerations])
 
 
 TOOLS: dict[str, Tool] = {t.name: t for t in [

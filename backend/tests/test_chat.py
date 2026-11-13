@@ -2,11 +2,12 @@
 import os
 
 import pytest
+from fake_chat_model import FakeChatModel
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 
 import app.tools.registry as tools_module
-from app.chat import FakeChatModel, get_chat_model
+from app.chat import get_chat_model
 from app.chat.tools import build_tools, for_model
 from app.main import app
 from helpers import DAY, LAT, LON
@@ -95,6 +96,19 @@ def test_model_sees_summary_not_audit_or_long_series():
     assert env["audit"] == [1] and len(env["series"]) == 100  # the client still gets everything
 
 
+def test_model_sees_considerations_once():
+    env = {"audit": [1], "limitations": ["x"], "considerations": [{"code": "c", "level": "caution", "message": "x"}]}
+    seen = for_model(env)
+    assert seen["considerations"] and "limitations" not in seen and "audit" not in seen
+    assert for_model({"limitations": ["x"]})["limitations"] == ["x"]  # tools without considerations keep theirs
+
+
+def test_stub_answer_mentions_cautions(client):
+    body = ask(client, f"How polluted was the air in Amsterdam on {DAY}?")
+    cautions = [c["message"] for c in body["results"][1]["considerations"] if c["level"] != "info"]
+    assert all(m in body["answer"] for m in cautions)
+
+
 def test_tools_are_exposed_with_schemas():
     tools = {t.name: t for t in build_tools(None)}
     assert set(tools) == {"geocode", "coverage", "stations", "pm25", "pm25_timeseries", "pm25_compare"}
@@ -102,16 +116,36 @@ def test_tools_are_exposed_with_schemas():
     assert tools["pm25_compare"].description.startswith("Compare")
 
 
-def test_get_chat_model_falls_back_to_stub_without_key(monkeypatch):
+def test_chat_answers_503_without_api_key(make_client, monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("HL_LLM", raising=False)
-    assert isinstance(get_chat_model(), FakeChatModel)
+    app.dependency_overrides.pop(get_chat_model, None)
+    r = make_client().post("/chat", json={"message": "hi"})
+    assert r.status_code == 503 and "OPENAI_API_KEY" in r.json()["detail"]
 
 
 @pytest.mark.live
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="needs OPENAI_API_KEY (live OpenAI call)")
-def test_live_openai(client, monkeypatch):
-    monkeypatch.setenv("HL_LLM", "openai")
+def test_live_openai(client):
     app.dependency_overrides[get_chat_model] = get_chat_model
     body = ask(client, f"What was the PM2.5 in Amsterdam on {DAY}?")
     assert body["results"] and body["answer"]
+
+
+def test_several_places_uses_the_first_and_says_so(client, monkeypatch):
+    places = [{"name": "Haarlem", "type": "woonplaats", "lat": LAT, "lon": LON},
+              {"name": "Haarlem, Groningen", "type": "woonplaats", "lat": 53.2, "lon": 6.5}]
+    monkeypatch.setattr(tools_module, "geocode", lambda q, limit=5: places)
+    body = ask(client, f"How polluted was the air in Haarlem on {DAY}?")
+    assert body["interpretation"][1]["input"]["lat"] == LAT  # the first match
+    note = body["results"][0]["considerations"][0]
+    assert note["code"] == "ambiguous_place" and note["facts"]["place_chosen"] == "Haarlem"
+    analysis = body["results"][1]
+    assert analysis["considerations"][0]["code"] == "ambiguous_place"
+    assert analysis["limitations"][0].startswith("'Haarlem' matched 2 places")
+    assert "Haarlem, Groningen" in body["answer"]  # the stub passes the note on to the resident
+
+
+def test_single_place_has_no_ambiguity_note(client):
+    body = ask(client, f"How polluted was the air in Amsterdam on {DAY}?")
+    assert body["results"][0]["considerations"] == [] and body["results"][0]["chosen"]["name"] == "Amsterdam"
+    assert "ambiguous_place" not in {c["code"] for c in body["results"][1]["considerations"]}

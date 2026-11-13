@@ -73,6 +73,8 @@ def chat(service: Pm25Service, model: BaseChatModel, req: ChatRequest) -> dict:
                 entry["error"] = str(reply.content) if reply is not None else "no result"
             interpretation.append(entry)
 
+    _carry_place_notes(results)
+
     last = new[-1] if new else None
     answer = _text(last) if finished and isinstance(last, AIMessage) and not last.tool_calls else ""
     if not answer:
@@ -87,6 +89,15 @@ def chat(service: Pm25Service, model: BaseChatModel, req: ChatRequest) -> dict:
         "llm": getattr(model, "model_name", None) or type(model).__name__,
         "history": messages_to_dict([_without_artifact(m) for m in messages]),
     }
+
+
+def _carry_place_notes(results: list[dict]) -> None:
+    """Notes about the place the chat picked (e.g. several matches) belong with the analyses that used it."""
+    notes = [c for r in results if "chosen" in r for c in r["considerations"]]
+    for r in results:
+        if notes and "chosen" not in r and "considerations" in r:
+            r["considerations"] = [*notes, *r["considerations"]]
+            r["limitations"] = [c["message"] for c in r["considerations"]]
 
 
 def _without_artifact(m: BaseMessage) -> BaseMessage:

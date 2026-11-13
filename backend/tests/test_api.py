@@ -133,7 +133,8 @@ def test_geocode(make_client, monkeypatch):
     import app.tools.registry as t
     monkeypatch.setattr(t, "geocode", lambda q, limit: [{"name": "Jordaan, Amsterdam", "type": "wijk", "lat": 52.37, "lon": 4.88}])
     body = make_client().get("/geocode", params={"q": "Jordaan"}).json()
-    assert body["candidates"][0]["lat"] == 52.37
+    assert body["candidates"][0]["lat"] == 52.37 and body["chosen"] == body["candidates"][0]
+    assert body["considerations"] == []
 
 
 def test_geocode_parses_pdok_point(monkeypatch):

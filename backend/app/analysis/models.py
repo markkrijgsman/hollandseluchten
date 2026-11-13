@@ -5,6 +5,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .audit import AuditStepT
+
 Basis = Literal["sensors", "reference_stations"]
 
 
@@ -18,11 +20,21 @@ class Reproducible(Model):
     reproduce: str | None = None
 
 
-class AuditStep(Model):
-    """One step of the audit trail. Steps carry action-specific details as extra fields."""
-    model_config = ConfigDict(extra="allow")
-    step: int
-    action: str
+class Consideration(Model):
+    """A note on this result, derived from what happened in the run (rules: config/considerations.toml)."""
+    code: str = Field(description="Stable identifier, so clients can word the note themselves")
+    level: Literal["info", "caution", "warning"]
+    origin: Literal["analyse-together", "this-api", "config"] = Field(
+        description="Where the underlying choice comes from: the validated tool, a choice made in this API, or a config file")
+    message: str = Field(description="Default wording (English)")
+    facts: dict[str, Any] = Field(description="The numbers behind the note")
+
+
+class Analysis(Reproducible):
+    """What every analysis response carries besides its numbers."""
+    considerations: list[Consideration]
+    limitations: list[str] = Field(description="The messages of `considerations`, as plain strings")
+    audit: list[AuditStepT]
 
 
 class Location(Model):
@@ -46,7 +58,7 @@ class SourceEstimate(Model):
     stations: list[StationEstimate]
 
 
-class Pm25Response(Reproducible):
+class Pm25Response(Analysis):
     date: str
     location: Location
     radius_km: float
@@ -56,8 +68,6 @@ class Pm25Response(Reproducible):
     basis: Basis
     sensors: SourceEstimate | None
     reference: SourceEstimate | None
-    limitations: list[str]
-    audit: list[AuditStep]
 
 
 class SeriesPoint(Model):
@@ -76,15 +86,13 @@ class SeriesSummary(Model):
     max: float
 
 
-class TimeseriesResponse(Reproducible):
+class TimeseriesResponse(Analysis):
     location: Location
     radius_km: float
     resolution: Literal["day", "hour"]
     unit: str
     series: list[SeriesPoint]
     summary: SeriesSummary
-    limitations: list[str]
-    audit: list[AuditStep]
 
 
 class Level(Model):
@@ -113,15 +121,13 @@ class AnnualComparison(Level):
     uncertain: bool = Field(description="The mean is within its uncertainty of the limit")
 
 
-class CompareResponse(Reproducible):
+class CompareResponse(Analysis):
     location: Location
     radius_km: float
     unit: str
     against: str
     comparisons: list[DailyComparison | AnnualComparison]
     summary: SeriesSummary
-    limitations: list[str]
-    audit: list[AuditStep]
 
 
 class SourceCoverage(Model):

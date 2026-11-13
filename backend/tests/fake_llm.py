@@ -35,7 +35,9 @@ class FakeLLM:
                 return _call(last_use["name"], {**last_use["input"], "radius_km": 15.0})
             return _text(f"I could not get an answer: {last_res['content']}")
         if turn and turn[-1][0]["name"] not in ("geocode", "stations"):
-            return _text(_answer(turn[-1][0]["name"], json.loads(turn[-1][1]["content"])))
+            note = " ".join(c["message"] for c in json.loads(done["geocode"]["content"]).get("considerations", [])
+                            ) if "geocode" in done else ""
+            return _text(" ".join(filter(None, [_answer(turn[-1][0]["name"], json.loads(turn[-1][1]["content"])), note])))
 
         # where?
         place = next((p for p in PLACE.findall(question) if p.lower() not in MONTHS), None)
@@ -117,7 +119,8 @@ def _call(name: str, args: dict) -> dict:
 
 
 def _answer(tool: str, r: dict) -> str:
-    lim = r["limitations"][0] if r.get("limitations") else ""
+    notes = [c["message"] for c in r.get("considerations", []) if c["level"] != "info"]
+    lim = " ".join(notes) or (r["limitations"][0] if r.get("limitations") else "")
     if tool == "pm25":
         basis = "Hollandse Luchten sensors" if r["basis"] == "sensors" else "official Luchtmeetnet stations"
         return (f"On {r['date']} the PM2.5 level near this location was about {r['pm25']} µg/m³ "
