@@ -14,9 +14,11 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * EARTH_RADIUS_KM * asin(sqrt(a))
 
 
+NL_LAT, NL_LON = (50.7, 53.7), (3.2, 7.3)  # coarse bounding box around the Netherlands
+
+
 def in_netherlands(lat: float, lon: float) -> bool:
-    """Coarse bounding box around the Netherlands."""
-    return 50.7 <= lat <= 53.7 and 3.2 <= lon <= 7.3
+    return NL_LAT[0] <= lat <= NL_LAT[1] and NL_LON[0] <= lon <= NL_LON[1]
 
 
 def distances_km(df: "pd.DataFrame", lat: float, lon: float) -> "pd.Series":

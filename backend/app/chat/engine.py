@@ -5,7 +5,6 @@ Stateless: the client sends `history` back with each request.
 """
 from __future__ import annotations
 
-import json
 from datetime import date
 from typing import Any
 

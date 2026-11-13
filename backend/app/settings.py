@@ -17,9 +17,11 @@ class Settings:
     rscript: str = "Rscript"
 
     @classmethod
-    def from_env(cls) -> "Settings":
-        data = Path(os.environ.get("HL_DATA_DIR", BACKEND_DIR.parent / "HackathonHollandseLuchten" / "data"))
-        sensors = os.environ.get("HL_SENSOR_PARQUET")
+    def from_env(cls) -> Settings:
+        data = Path(os.environ.get("HL_DATA_DIR", BACKEND_DIR.parent.parent / "HackathonHollandseLuchten" / "data"))
+        # the sensor file is optional: HL_SENSOR_PARQUET, else data_sensors.parquet next to the reference data
+        sensors = os.environ.get("HL_SENSOR_PARQUET") or next(
+            (str(f) for f in [data / "data_sensors.parquet"] if f.exists()), None)
         return cls(
             reference_measurements=data / "reference_measurements.parquet",
             reference_metadata=data / "reference_station_metadata.csv",

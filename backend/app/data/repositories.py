@@ -8,6 +8,8 @@ from pathlib import Path
 import pandas as pd
 import pyarrow.parquet as pq
 
+from ..analysis.geo import NL_LAT, NL_LON
+
 FIXED_TZ_OFFSET = pd.Timedelta(hours=1)
 
 
@@ -62,6 +64,12 @@ class ReferenceRepository:
         return df.merge(meta, on="station", how="inner")
 
 
+def _with_valid_position(df: pd.DataFrame) -> pd.DataFrame:
+    """Rows with a calibrated value and a GPS position inside the Netherlands (the file has 0,0 and foreign fixes)."""
+    df = df.dropna(subset=["pm25_kal", "latitude", "longitude"])
+    return df[df["latitude"].between(*NL_LAT) & df["longitude"].between(*NL_LON)]
+
+
 class SensorRepository:
     """Hollandse Luchten sensor kits (hourly calibrated PM2.5)."""
 
@@ -73,8 +81,8 @@ class SensorRepository:
     def kit_stations(self) -> pd.DataFrame:
         """Kits with calibrated PM2.5: id, name, lat, lon, first/last day (UTC+1) and number of hourly-ish values."""
         if self._stations is None:
-            t = pq.read_table(self.path, columns=["kit_id", "timestamp_from", "pm25_kal", "latitude", "longitude"]
-                              ).to_pandas().dropna(subset=["pm25_kal", "latitude", "longitude"])
+            t = _with_valid_position(pq.read_table(
+                self.path, columns=["kit_id", "timestamp_from", "pm25_kal", "latitude", "longitude"]).to_pandas())
             t["day"] = (pd.to_datetime(t["timestamp_from"], utc=True) + FIXED_TZ_OFFSET).dt.strftime("%Y-%m-%d")
             g = t.groupby("kit_id").agg(data_from=("day", "min"), data_to=("day", "max"),
                                         lat=("latitude", "median"), lon=("longitude", "median"))
@@ -93,13 +101,14 @@ class SensorRepository:
         return self.hourly_range(day, day)
 
     def hourly_range(self, first: Date, last: Date) -> pd.DataFrame:
-        start = pd.Timestamp(first.isoformat(), tz="UTC") - FIXED_TZ_OFFSET
-        end = pd.Timestamp(last.isoformat(), tz="UTC") - FIXED_TZ_OFFSET + pd.Timedelta(days=1)
+        # the sensor file stores naive UTC timestamps, so the filter bounds are naive too
+        start = pd.Timestamp(first.isoformat()) - FIXED_TZ_OFFSET
+        end = pd.Timestamp(last.isoformat()) - FIXED_TZ_OFFSET + pd.Timedelta(days=1)
         df = pq.read_table(
             self.path, columns=["kit_id", "timestamp_from", "pm25_kal", "latitude", "longitude"],
             filters=[("timestamp_from", ">=", start.to_pydatetime()), ("timestamp_from", "<", end.to_pydatetime())],
         ).to_pandas()
-        df = df.dropna(subset=["pm25_kal", "latitude", "longitude"])
+        df = _with_valid_position(df)
         if df.empty:
             return pd.DataFrame(columns=["station", "hour", "value", "lat", "lon", "name"])
         ts = pd.to_datetime(df["timestamp_from"], utc=True) + FIXED_TZ_OFFSET

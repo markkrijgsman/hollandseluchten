@@ -1,7 +1,7 @@
 """Constants and writers for the synthetic data the tests run on (no dependency on the hackathon repo)."""
 import os
 import shutil
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -12,7 +12,7 @@ REAL_DATA = Path(os.environ.get("HL_DATA_DIR", BACKEND.parent.parent / "Hackatho
 
 LAT, LON = 52.3676, 4.9041
 DAY = date(2025, 5, 1)
-DAY_START_UTC = datetime(2025, 4, 30, 23, tzinfo=timezone.utc)  # 2025-05-01 00:00 at fixed UTC+1
+DAY_START_UTC = datetime(2025, 4, 30, 23, tzinfo=UTC)  # 2025-05-01 00:00 at fixed UTC+1
 
 # synthetic reference stations: id, name, latitude offset (deg; ~111 km per degree), longitude, constant value, types
 REFERENCE_STATIONS = [
@@ -55,6 +55,7 @@ def write_sensors(path: Path, kits: dict) -> Path:
         for h in range(24):
             ts = DAY_START_UTC + pd.Timedelta(hours=h)
             rows.append((kit, ts, kal[h], raw[h], LAT + dlat, LON))
-    pd.DataFrame(rows, columns=["kit_id", "timestamp_from", "pm25_kal", "pm25_raw", "latitude", "longitude"]) \
-        .to_parquet(path)
+    df = pd.DataFrame(rows, columns=["kit_id", "timestamp_from", "pm25_kal", "pm25_raw", "latitude", "longitude"])
+    df["timestamp_from"] = df["timestamp_from"].dt.tz_localize(None)  # the real file has naive UTC timestamps
+    df.to_parquet(path)
     return path
