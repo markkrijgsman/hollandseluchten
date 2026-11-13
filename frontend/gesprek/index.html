@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stel een vraag · Hollandse Luchten</title>
+    <link rel="stylesheet" href="/app.css" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="logo" href="/" aria-label="Hollandse Luchten">
+        <span class="logo-mark" aria-hidden="true"></span>
+        <span class="logo-text">Hollandse Luchten</span>
+      </a>
+      <nav class="topnav">
+        <a href="/" id="nav-address">Check mijn plek</a>
+        <a href="/gesprek/" class="on" id="nav-ask">Stel een vraag</a>
+      </nav>
+      <div class="top-actions">
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" data-lang="nl" class="on">NL</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+        <span class="mock-badge" id="badge">Prototype · nepdata</span>
+      </div>
+    </header>
+
+    <div class="shell">
+      <aside class="sidebar">
+        <h2 id="side-tools">Luchtkwaliteit</h2>
+        <a href="/" id="side-address">Check mijn plek</a>
+        <a href="/gesprek/" class="on" id="side-ask">Stel een vraag</a>
+        <hr />
+        <button type="button" id="chat-new" class="btn-ghost chat-new-btn">Nieuw gesprek</button>
+      </aside>
+
+      <main class="main chat-main">
+        <div class="page-head">
+          <div>
+            <h1 id="chat-title">Stel je vraag over de luchtkwaliteit</h1>
+            <p id="chat-lead" class="lead"></p>
+          </div>
+        </div>
+
+        <div id="chat-thread" class="chat-thread" aria-live="polite" aria-label="Gesprek"></div>
+
+        <div id="chat-empty" class="chat-empty">
+          <p id="example-label" class="muted small">Probeer een van deze vragen:</p>
+          <div id="example-chips" class="chips"></div>
+        </div>
+
+        <form id="chat-form" class="chat-form-bar">
+          <input
+            id="chat-input"
+            type="text"
+            autocomplete="off"
+            aria-label="Je vraag"
+            placeholder="Typ je vraag hier…"
+          />
+          <button type="submit" id="chat-submit" class="btn-primary">Verstuur</button>
+        </form>
+      </main>
+    </div>
+
+    <script src="/js/i18n.js"></script>
+    <script src="/js/chat.js"></script>
+  </body>
+</html>

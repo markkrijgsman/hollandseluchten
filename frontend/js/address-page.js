@@ -355,7 +355,7 @@
 
       <div class="verdict-actions">
         <span class="muted">${esc(t("Wil je zelf een vraag stellen over de metingen?", "Want to ask your own question about the measurements?"))}</span>
-        <a class="btn-outline" href="index.html?q=${encodeURIComponent(q)}">${esc(t("Stel een vraag →", "Ask a question →"))}</a>
+        <a class="btn-outline" href="/gesprek/?q=${encodeURIComponent(q)}">${esc(t("Stel een vraag →", "Ask a question →"))}</a>
       </div>
     </section>`;
   }

@@ -2,68 +2,135 @@
 <html lang="nl">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Stel een vraag · Hollandse Luchten</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hoe is de lucht op mijn adres? · Hollandse Luchten</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
     <link rel="stylesheet" href="app.css" />
-    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="topbar">
-      <a class="logo" href="index.html" aria-label="Hollandse Luchten">
+      <a class="logo" href="/" aria-label="Hollandse Luchten">
         <span class="logo-mark" aria-hidden="true"></span>
         <span class="logo-text">Hollandse Luchten</span>
       </a>
-      <nav class="topnav">
-        <a href="adres.html" id="nav-address">Mijn adres</a>
-        <a href="index.html" class="on" id="nav-ask">Stel een vraag</a>
+      <nav class="topnav" aria-label="Hoofdmenu">
+        <a href="/" class="on" data-i18n="nav.address">Check mijn plek</a>
+        <a href="/gesprek/" data-i18n="nav.ask">Stel een vraag</a>
       </nav>
       <div class="top-actions">
         <div class="lang-toggle" role="group" aria-label="Language">
           <button type="button" data-lang="nl" class="on">NL</button>
           <button type="button" data-lang="en">EN</button>
         </div>
-        <span class="mock-badge" id="badge">Prototype · nepdata</span>
       </div>
     </header>
 
-    <div class="shell">
-      <aside class="sidebar">
-        <h2 id="side-tools">Luchtkwaliteit</h2>
-        <a href="adres.html" id="side-address">Mijn adres</a>
-        <a href="index.html" class="on" id="side-ask">Stel een vraag</a>
-        <hr />
-        <button type="button" id="chat-new" class="btn-ghost chat-new-btn">Nieuw gesprek</button>
-      </aside>
+    <main class="main">
+      <div class="hero-head">
+        <h1 id="title" data-i18n="title">Moet ik me zorgen maken over de lucht hier?</h1>
+        <p class="hero-sub" data-i18n="subtitle">
+          Ontdek in één oogopslag hoe schoon de lucht vandaag en op de lange termijn is op jouw plek.
+        </p>
+      </div>
 
-      <main class="main chat-main">
-        <div class="page-head">
-          <div>
-            <h1 id="chat-title">Stel je vraag over de luchtkwaliteit</h1>
-            <p id="chat-lead" class="lead"></p>
-          </div>
+      <section class="card search">
+        <search aria-labelledby="title">
+          <form id="lookup" class="lookup" action="/" method="GET" novalidate>
+            <button type="button" class="btn-primary btn-locate" id="locate" aria-describedby="locate-privacy">
+              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
+                <path d="M10 2v2m0 12v2M2 10h2m12 0h2m-8-5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+              <span data-i18n="form.locate">Gebruik mijn locatie</span>
+            </button>
+
+            <span class="or-divider" data-i18n="form.or">of</span>
+
+            <div class="field">
+              <label for="postcode" data-i18n="form.postcode">Postcode of plaats</label>
+              <input
+                type="text"
+                name="postcode"
+                id="postcode"
+                autocomplete="postal-code"
+                autocorrect="off"
+                autocapitalize="characters"
+                spellcheck="false"
+                enterkeyhint="search"
+                placeholder="2011 RD"
+                maxlength="40"
+                aria-describedby="form-error locate-privacy"
+                required
+              />
+            </div>
+            <div class="field narrow">
+              <label for="number" data-i18n="form.number">Huisnr. (optioneel)</label>
+              <input
+                type="text"
+                name="number"
+                id="number"
+                inputmode="numeric"
+                autocorrect="off"
+                spellcheck="false"
+                enterkeyhint="go"
+                placeholder="2"
+                maxlength="8"
+                aria-describedby="form-error"
+              />
+            </div>
+            <button type="submit" class="btn-outline" id="go" data-i18n="form.submit">Zoek op</button>
+          </form>
+        </search>
+        <p class="muted small privacy-note" id="locate-privacy" data-i18n="form.privacy">
+          Je locatie of postcode wordt alleen gebruikt om het dichtstbijzijnde meetpunt te vinden en wordt nooit opgeslagen.
+        </p>
+        <p class="form-error" id="form-error" role="alert" aria-live="polite" hidden></p>
+
+        <div class="period-row" id="search-period-row">
+          <span class="muted small" id="search-period-label">Periode:</span>
+          <select id="search-period" class="select" aria-labelledby="search-period-label"></select>
+          <span id="search-period-info" class="muted small"></span>
+        </div>
+        <div id="search-custom-row" hidden>
+          <form id="search-range-form" class="custom-range" novalidate>
+            <label id="search-from-label"><span>Van</span><input type="date" id="search-from" min="2020-01-01" max="2026-09-30" required></label>
+            <label id="search-to-label"><span>Tot en met</span><input type="date" id="search-to" min="2020-01-01" max="2026-09-30" required></label>
+            <button type="submit" id="search-apply" class="btn-outline">Toepassen</button>
+            <span class="form-error" id="search-range-error" role="alert" aria-live="polite" hidden></span>
+          </form>
         </div>
 
-        <div id="chat-thread" class="chat-thread" aria-live="polite" aria-label="Gesprek"></div>
-
-        <div id="chat-empty" class="chat-empty">
-          <p id="example-label" class="muted small">Probeer een van deze vragen:</p>
-          <div id="example-chips" class="chips"></div>
+        <div class="examples">
+          <span class="muted small" data-i18n="form.try">Of kies een voorbeeld:</span>
+          <button type="button" class="chip" data-pc="2011RD" data-nr="2">Grote Markt 2, Haarlem</button>
+          <button type="button" class="chip" data-pc="2023CE" data-nr="">Haarlem-Noord (2023 CE)</button>
+          <button type="button" class="chip" data-pc="2034MA" data-nr="">Schalkwijk (2034 MA)</button>
+          <button type="button" class="chip" data-pc="1012JS" data-nr="1">Dam 1, Amsterdam</button>
         </div>
+      </section>
 
-        <form id="chat-form" class="chat-form-bar">
-          <input
-            id="chat-input"
-            type="text"
-            autocomplete="off"
-            aria-label="Je vraag"
-            placeholder="Typ je vraag hier…"
-          />
-          <button type="submit" id="chat-submit" class="btn-primary">Verstuur</button>
-        </form>
-      </main>
-    </div>
+      <div id="result"></div>
+    </main>
 
+    <footer class="foot muted small" id="foot"></footer>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBSotcK_P9raZBxR6EbkJOi7A1FXlvT2UQ"></script>
+    <script src="https://unpkg.com/leaflet.gridlayer.googlemutant@0.14.0/dist/Leaflet.GoogleMutant.js"></script>
     <script src="js/i18n.js"></script>
-    <script src="js/chat.js"></script>
+    <script src="js/real-data.js"></script>
+    <script src="js/mock-data.js"></script>
+    <script src="js/analysis.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/address.js"></script>
+    <script src="js/address-page.js"></script>
   </body>
 </html>

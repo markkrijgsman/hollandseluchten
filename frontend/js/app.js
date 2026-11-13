@@ -400,10 +400,10 @@
   }
 
   const CHROME = {
-    "nav-address": ["Mijn adres", "My address"],
+    "nav-address": ["Check mijn plek", "Check my spot"],
     "nav-ask": ["Stel een vraag", "Ask a question"],
     "side-tools": ["Luchtkwaliteit", "Air quality"],
-    "side-address": ["Mijn adres", "My address"],
+    "side-address": ["Check mijn plek", "Check my spot"],
     "side-ask": ["Stel een vraag", "Ask a question"],
     "side-page": ["Op deze pagina", "On this page"],
     "side-question": ["Je vraag", "Your question"],
