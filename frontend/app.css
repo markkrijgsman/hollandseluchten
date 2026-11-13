@@ -102,6 +102,9 @@ button, input, select { font: inherit; color: inherit; }
 .lookup input[aria-invalid="true"], .lookup input:user-invalid { border-color: var(--bad); }
 .privacy-note { margin: 10px 0 0; }
 .form-error { margin: 10px 0 0; color: var(--bad); font-size: 0.92rem; font-weight: 500; }
+.period-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.period-row .select { font-size: 0.88rem; min-height: 36px; padding: 5px 28px 5px 10px; }
+#search-custom-row { margin-top: 10px; }
 .examples { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 
 /* LAAG 1: Direct antwoord (Verdict Card) */
@@ -223,6 +226,10 @@ th { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
 
 .backend-box { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
 .backend-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 8px 0 12px; }
+.custom-range { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin: 0 0 14px; padding: 12px 14px; background: #f5f8fe; border: 1px solid #dbe5f7; border-radius: 8px; }
+.custom-range label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: #4b5060; }
+.custom-range input[type="date"] { padding: 5px 10px; border: 1px solid #767676; border-radius: 6px; font-size: 0.9rem; background: #fff; }
+.custom-range .form-error { flex-basis: 100%; margin: 0; }
 .backend-controls input[type="date"] { padding: 5px 10px; border: 1px solid #767676; border-radius: 6px; font-size: 0.9rem; background: #fff; }
 
 /* SVG-grafieken (charts.js) */
@@ -243,6 +250,15 @@ th { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
 .chart.scale .bar-value { font-size: 14px; }
 
 .foot { max-width: 820px; margin: 0 auto; padding: 0 20px 32px; }
+
+.data-source-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 6px 0 14px; padding: 4px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 500; line-height: 1.4;
+}
+.data-source-live   { background: #e9f6ef; color: #1a6b40; }
+.data-source-embedded { background: #fff8de; color: #7a5c00; }
+.data-source-demo   { background: #f1f3f5; color: #6b7080; }
 
 @media (max-width: 720px) {
   .main { padding: 18px 14px 32px; }

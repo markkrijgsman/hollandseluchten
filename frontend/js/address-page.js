@@ -12,7 +12,9 @@
 
   const COLORS = { you: "#2277FF", city: "#202333", grey: "#B0BAC2" };
 
-  const state = { lookup: null, period: "month", backendDate: null, backendBundle: null };
+  const DATE_MIN = "2020-01-01";
+  const DATE_MAX = "2026-09-30";
+  const state = { lookup: null, period: "month", customRange: null, backendDate: null, backendBundle: null };
   let leafletMap = null;
 
   const CHROME = {
@@ -33,6 +35,10 @@
       "Your location or postcode is only used to find the nearest monitoring station and is never stored.",
     ],
     "form.try": ["Of kies een voorbeeld:", "Or try an example:"],
+    "form.period": ["Periode:", "Period:"],
+    "form.rangeFrom": ["Van", "From"],
+    "form.rangeTo": ["Tot en met", "To (inclusive)"],
+    "form.apply": ["Toepassen", "Apply"],
   };
 
   function makeCtx(input) {
@@ -63,6 +69,97 @@
     quarter: t("afgelopen 3 maanden", "the last 3 months"),
     month: t("afgelopen maand", "the last month"),
   })[key];
+
+  function renderSearchPeriodSelect() {
+    const sel = document.getElementById("search-period");
+    if (!sel) return;
+    const opts = [
+      ["week", "Afgelopen 7 dagen", "Last 7 days"],
+      ["month", "Afgelopen 30 dagen", "Last 30 days"],
+      ["quarter", "Afgelopen 3 maanden", "Last 3 months"],
+      ["year", "Heel jaar (365 dagen)", "Full year (365 days)"],
+      ["custom", "Eigen periode…", "Custom period…"],
+    ];
+    sel.innerHTML = opts.map(([k, nl, en]) => `<option value="${k}"${state.period === k ? " selected" : ""}>${esc(t(nl, en))}</option>`).join("");
+
+    const lbl = document.getElementById("search-period-label");
+    if (lbl) lbl.textContent = t("Periode:", "Period:");
+    const applyBtn = document.getElementById("search-apply");
+    if (applyBtn) applyBtn.textContent = t("Toepassen", "Apply");
+    const fromSpan = document.querySelector("#search-from-label span");
+    if (fromSpan) fromSpan.textContent = t("Van", "From");
+    const toSpan = document.querySelector("#search-to-label span");
+    if (toSpan) toSpan.textContent = t("Tot en met", "To (inclusive)");
+
+    const customRow = document.getElementById("search-custom-row");
+    if (customRow) customRow.hidden = state.period !== "custom";
+  }
+
+  function bindSearchPeriod() {
+    const sel = document.getElementById("search-period");
+    if (!sel) return;
+    sel.addEventListener("change", async (e) => {
+      state.period = e.target.value;
+      if (state.period === "custom" && !state.customRange) {
+        const clamp = (d) => (d < DATE_MIN ? DATE_MIN : d > DATE_MAX ? DATE_MAX : d);
+        const to = clamp(new Date().toISOString().slice(0, 10));
+        const from = clamp(new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
+        state.customRange = { from, to };
+        D.setCustomRange(from, to);
+      }
+      renderSearchPeriodSelect();
+      if (state.period === "custom") {
+        const fi = document.getElementById("search-from");
+        const ti = document.getElementById("search-to");
+        if (fi && state.customRange) fi.value = state.customRange.from;
+        if (ti && state.customRange) ti.value = state.customRange.to;
+        return;
+      }
+      if (state.lookup) {
+        if (state.backendBundle && state.backendBundle.ok) {
+          const { lat, lon } = state.lookup.place;
+          const tsRes = await D.fetchBackendTimeseries(lat, lon, state.backendBundle.latestDate, state.period, state.backendBundle.radiusKm);
+          if (tsRes.ok) {
+            state.backendBundle.timeseries = tsRes.data;
+            state.backendBundle.timeseriesRange = tsRes.range;
+          }
+        }
+        const y = window.scrollY;
+        render();
+        window.scrollTo(0, y);
+      }
+    });
+
+    const rangeForm = document.getElementById("search-range-form");
+    if (rangeForm) {
+      rangeForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const from = document.getElementById("search-from").value;
+        const to = document.getElementById("search-to").value;
+        const err = document.getElementById("search-range-error");
+        const fail = (nl, en) => { err.hidden = false; err.textContent = t(nl, en); };
+        if (!from || !to) return fail("Vul beide datums in.", "Enter both dates.");
+        if (from > to) return fail("De startdatum ligt na de einddatum.", "The start date is after the end date.");
+        if (from < DATE_MIN || to > DATE_MAX) {
+          return fail(
+            `Kies datums tussen ${A.longDate(DATE_MIN)} en ${A.longDate(DATE_MAX)}.`,
+            `Choose dates between ${A.longDate(DATE_MIN)} and ${A.longDate(DATE_MAX)}.`
+          );
+        }
+        err.hidden = true;
+        state.customRange = { from, to };
+        D.setCustomRange(from, to);
+        state.backendDate = to;
+        if (state.lookup) {
+          const { lat, lon } = state.lookup.place;
+          state.backendBundle = await D.fetchBackendBundle(lat, lon, to, "custom", 15);
+          const y = window.scrollY;
+          render();
+          window.scrollTo(0, y);
+        }
+      });
+    }
+  }
 
   const clsName = (c) => t(c.nl, c.en);
 
@@ -152,6 +249,23 @@
     </div>`;
   }
 
+  function dataSourceBadge(r) {
+    if (r && r.fromBackend && r.backend && !r.backend.fromEmbeddedParquet) {
+      const date = r.backend.latestDate || "";
+      return `<p class="data-source-badge data-source-live" role="status">
+        <span aria-hidden="true">●</span> ${esc(t(`Live meetdata van Luchtmeetnet API · ${date}`, `Live data from Luchtmeetnet API · ${date}`))}
+      </p>`;
+    }
+    if (r && r.fromBackend && r.backend && r.backend.fromEmbeddedParquet) {
+      return `<p class="data-source-badge data-source-embedded" role="status">
+        <span aria-hidden="true">◑</span> ${esc(t("Ingebedde dataset (backend niet bereikbaar)", "Embedded dataset (backend offline)"))}
+      </p>`;
+    }
+    return `<p class="data-source-badge data-source-demo" role="status">
+      <span aria-hidden="true">○</span> ${esc(t("Demodata (geen backend)", "Demo data (no backend)"))}
+    </p>`;
+  }
+
   // LAAG 1: Eén rustige kaart met het directe antwoord + kaartje
   function verdictCard(lk, r, apiRes) {
     const p = lk.place;
@@ -182,6 +296,7 @@
 
       <h2 class="verdict-headline">${esc(v.headline)}</h2>
       <p class="verdict-lead">${esc(v.lead)}</p>
+      ${dataSourceBadge(r)}
 
       <div class="quick-facts">
         <div class="fact-box">
@@ -269,13 +384,15 @@
           `The difference is ${fmt(Math.abs(diff))} µg/m³. That could be your neighbourhood (traffic, wood burning), but also the sensor itself.`
         );
 
-    const daily = r.period.key !== "year";
+    const spanDays = D.daysBetween(r.period.start, r.period.end);
+    const daily = r.period.key === "custom" ? spanDays <= 120 : r.period.key !== "year";
     let labels, you, city, tick;
     if (daily) {
       labels = r.dates;
       you = r.est;
       city = r.cityDaily;
-      tick = (d, i) => (i % 7 === 0 ? A.shortDate(d) : null);
+      const step = labels.length <= 14 ? 1 : 7;
+      tick = (d, i) => (i % step === 0 ? A.shortDate(d) : null);
     } else {
       const byMonth = (vals) => A.groupMean(r.dates, vals, (x) => x.slice(0, 7));
       const ym = byMonth(r.est);
@@ -302,6 +419,7 @@
           <label for="period" class="muted small">${esc(t("Kies periode:", "Choose period:"))} ${periodSelect()}</label>
           <span class="muted small">${esc(A.longDate(r.period.start))} – ${esc(A.longDate(r.period.end))}</span>
         </div>
+        ${customRangeFields(r)}
         <div class="stats">
           <div><span class="muted small">${esc(t("Jouw plek", "Your spot"))}</span><b style="color:${COLORS.you}">${fmt(r.mean)}</b><span class="muted small">µg/m³</span></div>
           <div><span class="muted small">${esc(cityName)}</span><b>${fmt(r.city)}</b><span class="muted small">µg/m³</span></div>
@@ -482,8 +600,21 @@
   function periodSelect() {
     const opt = (k, nl, en) => `<option value="${k}"${state.period === k ? " selected" : ""}>${esc(t(nl, en))}</option>`;
     return `<select id="period" class="select" aria-label="${esc(t("Periode", "Period"))}">
-      ${opt("week", "Afgelopen 7 dagen", "Last 7 days")}${opt("month", "Afgelopen 30 dagen", "Last 30 days")}${opt("quarter", "Afgelopen 3 maanden", "Last 3 months")}${opt("year", "Heel jaar (365 dagen)", "Full year (365 days)")}
+      ${opt("week", "Afgelopen 7 dagen", "Last 7 days")}${opt("month", "Afgelopen 30 dagen", "Last 30 days")}${opt("quarter", "Afgelopen 3 maanden", "Last 3 months")}${opt("year", "Heel jaar (365 dagen)", "Full year (365 days)")}${opt("custom", "Eigen periode…", "Custom period…")}
     </select>`;
+  }
+
+  // Van/tot-datums, alleen zichtbaar bij "Eigen periode".
+  function customRangeFields(r) {
+    if (state.period !== "custom") return "";
+    const from = state.customRange ? state.customRange.from : r.period.start;
+    const to = state.customRange ? state.customRange.to : r.period.end;
+    return `<form id="custom-range" class="custom-range" novalidate>
+      <label>${esc(t("Van", "From"))} <input type="date" id="range-from" value="${esc(from)}" min="${DATE_MIN}" max="${DATE_MAX}" required></label>
+      <label>${esc(t("Tot en met", "To (inclusive)"))} <input type="date" id="range-to" value="${esc(to)}" min="${DATE_MIN}" max="${DATE_MAX}" required></label>
+      <button type="submit" class="btn-outline">${esc(t("Toepassen", "Apply"))}</button>
+      <span class="form-error" id="range-error" role="alert" aria-live="polite" hidden></span>
+    </form>`;
   }
 
   function render() {
@@ -681,9 +812,48 @@
   function bind(audit, lk, r) {
     initMap(lk, r);
     const periodEl = document.getElementById("period");
+    const rangeForm = document.getElementById("custom-range");
+    if (rangeForm) {
+      rangeForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const from = document.getElementById("range-from").value;
+        const to = document.getElementById("range-to").value;
+        const err = document.getElementById("range-error");
+        const fail = (nl, en) => {
+          err.hidden = false;
+          err.textContent = t(nl, en);
+        };
+        if (!from || !to) return fail("Vul beide datums in.", "Enter both dates.");
+        if (from > to) return fail("De startdatum ligt na de einddatum.", "The start date is after the end date.");
+        if (from < DATE_MIN || to > DATE_MAX) {
+          return fail(
+            `Kies datums tussen ${A.longDate(DATE_MIN)} en ${A.longDate(DATE_MAX)}.`,
+            `Choose dates between ${A.longDate(DATE_MIN)} and ${A.longDate(DATE_MAX)}.`
+          );
+        }
+        err.hidden = true;
+        state.customRange = { from, to };
+        D.setCustomRange(from, to);
+        // De meetdatum (/pm25) volgt de einddatum van de gekozen periode.
+        state.backendDate = to;
+        if (state.lookup) {
+          const { lat, lon } = state.lookup.place;
+          state.backendBundle = await D.fetchBackendBundle(lat, lon, to, "custom", 15);
+        }
+        const y = window.scrollY;
+        render();
+        window.scrollTo(0, y);
+      });
+    }
     if (periodEl) {
       periodEl.addEventListener("change", async (e) => {
         state.period = e.target.value;
+        renderSearchPeriodSelect();
+        if (state.period === "custom") {
+          // Begin met de periode die al getoond werd, zodat de datums meteen kloppen.
+          if (!state.customRange && r && r.period) state.customRange = { from: r.period.start, to: r.period.end };
+          if (state.customRange) D.setCustomRange(state.customRange.from, state.customRange.to);
+        }
         if (state.backendBundle && state.backendBundle.ok && state.lookup) {
           const { lat, lon } = state.lookup.place;
           const tsRes = await D.fetchBackendTimeseries(
@@ -858,10 +1028,13 @@
   );
   I.onChange(() => {
     applyChrome();
+    renderSearchPeriodSelect();
     render();
   });
 
   applyChrome();
+  renderSearchPeriodSelect();
+  bindSearchPeriod();
   const params0 = new URLSearchParams(window.location.search);
   if (params0.get("postcode")) {
     document.getElementById("postcode").value = params0.get("postcode");

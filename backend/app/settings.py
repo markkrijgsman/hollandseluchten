@@ -18,7 +18,7 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        data = Path(os.environ.get("HL_DATA_DIR", BACKEND_DIR.parent.parent / "HackathonHollandseLuchten" / "data"))
+        data = Path(os.environ.get("HL_DATA_DIR", BACKEND_DIR.parent / "HackathonHollandseLuchten" / "data"))
         sensors = os.environ.get("HL_SENSOR_PARQUET")
         return cls(
             reference_measurements=data / "reference_measurements.parquet",

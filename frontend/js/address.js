@@ -497,7 +497,26 @@
     return d.toISOString().slice(0, 10);
   }
 
+  // Door de gebruiker gekozen periode (periodKey "custom"): { from, to } als YYYY-MM-DD.
+  let customRange = null;
+
+  function setCustomRange(from, to) {
+    customRange = from && to ? { from, to } : null;
+  }
+
+  function daysBetween(from, to) {
+    return Math.round((new Date(to + "T00:00:00Z") - new Date(from + "T00:00:00Z")) / 86400000) + 1;
+  }
+
   function rangeForPeriodKey(endDate, periodKey) {
+    if (periodKey === "custom" && customRange) {
+      return {
+        from: customRange.from,
+        to: customRange.to,
+        resolution: "day",
+        months: Math.round((daysBetween(customRange.from, customRange.to) / 30) * 100) / 100,
+      };
+    }
     if (periodKey === "day24h") {
       return { from: shiftDate(endDate, -1), to: endDate, resolution: "hour", months: 0.03 };
     }
@@ -713,6 +732,11 @@
   const grade = (v) => GRADES.find((g) => v < g.max);
 
   function periodFor(key) {
+    if (key === "custom" && customRange) {
+      const start = customRange.from < M.period.start ? M.period.start : customRange.from;
+      const end = customRange.to > M.period.end ? M.period.end : customRange.to;
+      return { key, start, end, months: Math.round((daysBetween(start, end) / 30) * 100) / 100 };
+    }
     const end = M.period.end;
     const months = { year: 12, quarter: 3, month: 1 }[key] || 12;
     const d = new Date(end + "T00:00:00Z");
@@ -856,5 +880,7 @@
     lki,
     grade,
     periodFor,
+    setCustomRange,
+    daysBetween,
   };
 })();
