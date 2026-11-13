@@ -1,4 +1,6 @@
 """Step 1 of every analysis: pick nearby stations and run the Analyse-Together R functions over their hourly rows."""
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import date as Date
 

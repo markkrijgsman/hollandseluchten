@@ -1,4 +1,6 @@
 """Aggregation periods (day / hour) and how to label a date range."""
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import date as Date
 

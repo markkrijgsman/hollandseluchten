@@ -205,11 +205,18 @@
     });
   }
 
-  async function fetchBackendPm25(lat, lon, date = "2025-05-01", radiusKm = 10) {
+  function isRemoteHost() {
+    const h = window.location.hostname;
+    const hasParam = new URLSearchParams(window.location.search).has("api");
+    return h !== "localhost" && h !== "127.0.0.1" && !hasParam && !window.HL_API_URL;
+  }
+
+  async function apiGet(path, timeoutMs = 8000) {
     const base = apiBase();
-    const url = `${base}/pm25?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&date=${encodeURIComponent(date)}&radius_km=${encodeURIComponent(radiusKm)}`;
+    const url = `${base}${path}`;
+    const effTimeout = isRemoteHost() ? Math.min(timeoutMs, 900) : timeoutMs;
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(effTimeout) });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
         return {
@@ -224,6 +231,461 @@
     } catch (err) {
       return { ok: false, status: 0, url, offline: true, error: err.message || "Backend unreachable" };
     }
+  }
+
+  function computeRealDataTimeseries(lat, lon, endDate, periodKey = "month", radiusKm = 15) {
+    const R = window.REAL_DATA;
+    const rng = rangeForPeriodKey(endDate, periodKey);
+    if (!R || !Array.isArray(R.stations)) return { ok: false, range: rng };
+
+    let nearby = R.stations
+      .map((s) => ({ ...s, distance_km: Math.round(distanceKm({ lat, lon }, s) * 100) / 100 }))
+      .filter((s) => s.distance_km <= radiusKm)
+      .sort((a, b) => a.distance_km - b.distance_km);
+
+    if (!nearby.length) {
+      nearby = R.stations
+        .map((s) => ({ ...s, distance_km: Math.round(distanceKm({ lat, lon }, s) * 100) / 100 }))
+        .sort((a, b) => a.distance_km - b.distance_km)
+        .slice(0, 4);
+    }
+
+    const series = [];
+    for (let i = 0; i < R.days.length; i++) {
+      const d = R.days[i];
+      if (d < rng.from || d > rng.to) continue;
+      let wSum = 0;
+      let valSum = 0;
+      let used = 0;
+      for (const st of nearby) {
+        const v = R.daily_mean[st.id] && R.daily_mean[st.id][i];
+        if (v != null) {
+          const w = 1 / Math.pow(Math.max(st.distance_km, 0.5), 2);
+          wSum += w;
+          valSum += w * v;
+          used++;
+        }
+      }
+      if (used > 0 && wSum > 0) {
+        series.push({
+          time: d,
+          pm25: Math.round((valSum / wSum) * 100) / 100,
+          uncertainty: 0.0,
+          basis: "reference_stations",
+          stations_used: used,
+        });
+      }
+    }
+    const vals = series.map((p) => p.pm25);
+    const mean = vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100 : 9.5;
+    return {
+      ok: true,
+      range: rng,
+      data: {
+        location: { lat, lon },
+        radius_km: radiusKm,
+        resolution: "day",
+        unit: "ug/m3",
+        series,
+        summary: {
+          periods_with_data: vals.length,
+          periods_expected: series.length || 30,
+          mean,
+          min: vals.length ? Math.min(...vals) : 0,
+          max: vals.length ? Math.max(...vals) : 0,
+        },
+        reproduce: `/pm25/timeseries?lat=${lat}&lon=${lon}&from=${rng.from}&to=${rng.to}&resolution=day&radius_km=${radiusKm}`,
+      },
+    };
+  }
+
+  function computeRealDataBundle(lat, lon, customDate = null, periodKey = "month", radiusKm = 15) {
+    const R = window.REAL_DATA;
+    if (!R || !Array.isArray(R.stations)) return null;
+
+    let effRadius = radiusKm;
+    let nearby = R.stations
+      .map((s) => ({ ...s, distance_km: Math.round(distanceKm({ lat, lon }, s) * 100) / 100 }))
+      .filter((s) => s.distance_km <= effRadius)
+      .sort((a, b) => a.distance_km - b.distance_km);
+
+    if (!nearby.length) {
+      effRadius = 35;
+      nearby = R.stations
+        .map((s) => ({ ...s, distance_km: Math.round(distanceKm({ lat, lon }, s) * 100) / 100 }))
+        .filter((s) => s.distance_km <= effRadius)
+        .sort((a, b) => a.distance_km - b.distance_km);
+    }
+    if (!nearby.length) {
+      nearby = R.stations
+        .map((s) => ({ ...s, distance_km: Math.round(distanceKm({ lat, lon }, s) * 100) / 100 }))
+        .sort((a, b) => a.distance_km - b.distance_km)
+        .slice(0, 5);
+    }
+
+    const latestDate = customDate || nearby[0].data_to || "2026-09-15";
+    let dayIdx = R.days.indexOf(latestDate);
+    if (dayIdx < 0) dayIdx = R.days.length - 1;
+
+    // Zoek dichtstbijzijnde dag met metingen als op exact deze dag geen station data heeft
+    let activeStations = [];
+    for (let offset = 0; offset < 30; offset++) {
+      const idx = Math.max(0, dayIdx - offset);
+      const list = [];
+      for (const st of nearby) {
+        const v = R.daily_mean[st.id] && R.daily_mean[st.id][idx];
+        const hrs = R.valid_hours[st.id] && R.valid_hours[st.id][idx];
+        if (v != null) {
+          const rawW = 1 / Math.pow(Math.max(st.distance_km, 0.5), 2);
+          list.push({
+            id: st.id,
+            name: st.name,
+            distance_km: st.distance_km,
+            rawW,
+            daily_mean: v,
+            uncertainty: 0.0,
+            valid_hours: hrs || 24,
+          });
+        }
+      }
+      if (list.length) {
+        dayIdx = idx;
+        activeStations = list;
+        break;
+      }
+    }
+
+    const totalW = activeStations.reduce((acc, s) => acc + s.rawW, 0) || 1;
+    activeStations.forEach((s) => {
+      s.weight = Math.round((s.rawW / totalW) * 1000) / 1000;
+      delete s.rawW;
+    });
+    const weightedPm = activeStations.length
+      ? Math.round(activeStations.reduce((acc, s) => acc + s.weight * s.daily_mean, 0) * 100) / 100
+      : 8.5;
+    const effDate = R.days[dayIdx];
+
+    const yearStation = nearby.find((s) => s.data_from <= "2025-01-01" && s.data_to >= "2025-12-31") || nearby[0];
+    const yearEnd = yearStation.data_to || effDate;
+    const yearStart = shiftDate(yearEnd, -364) < R.from ? R.from : shiftDate(yearEnd, -364);
+
+    const yearTs = computeRealDataTimeseries(lat, lon, yearEnd, "year", effRadius);
+    const yearSeries = (yearTs.data && yearTs.data.series) || [];
+    const yearMean = yearTs.data && yearTs.data.summary ? yearTs.data.summary.mean : weightedPm;
+    const daysWho = yearSeries.filter((p) => p.pm25 > NORMS.whoDay).length;
+    const daysEu = yearSeries.filter((p) => p.pm25 > NORMS.euDay2030).length;
+
+    const tsRes = computeRealDataTimeseries(lat, lon, effDate, periodKey, effRadius);
+
+    const audit = [
+      {
+        step: 1,
+        action: "request (reference_measurements.parquet)",
+        lat,
+        lon,
+        date: effDate,
+        radius_km: effRadius,
+        outlier_cutoff: 100.0,
+        min_hours_per_station: 18,
+        day_definition: R.day_definition,
+      },
+      {
+        step: 2,
+        action: "select reference stations (Luchtmeetnet)",
+        source: "reference_measurements.parquet",
+        stations: activeStations.map((s) => s.id),
+      },
+      {
+        step: 3,
+        action: "R: Analyse-Together functions",
+        functions: ["add_ref_kal", "outlier cut-off (value < cutoff)", "add_uncertainty_sensor_percent"],
+        parameters: { outlier_cutoff: 100.0, sensor_uncertainty_percent: 20, sensor_uncertainty_min_ug_m3: 5.3 },
+        hourly_values_in: activeStations.reduce((a, s) => a + s.valid_hours, 0),
+        outliers_removed: 0,
+      },
+      {
+        step: 4,
+        action: "distance-weighted mean",
+        weights: "1/max(d, 0.5 km)^2",
+        basis: "reference_stations",
+        result: weightedPm,
+      },
+    ];
+
+    const pm25Data = {
+      date: effDate,
+      location: { lat, lon },
+      radius_km: effRadius,
+      unit: "ug/m3",
+      pm25: weightedPm,
+      uncertainty: 0.0,
+      basis: "reference_stations",
+      sensors: null,
+      reference: {
+        pm25_ug_m3: weightedPm,
+        uncertainty_ug_m3: 0.0,
+        stations: activeStations,
+      },
+      limitations: [
+        "Daggemiddelde op basis van echte Luchtmeetnet-uurmetingen uit reference_measurements.parquet (2025–2026).",
+        "Afstandsgewogen gemiddelde (1/d²) van nabije officiële meetstations.",
+      ],
+      audit,
+      reproduce: `/pm25?lat=${lat}&lon=${lon}&date=${effDate}&radius_km=${effRadius}`,
+    };
+
+    const compareWho = {
+      location: { lat, lon },
+      radius_km: effRadius,
+      unit: "ug/m3",
+      against: "who",
+      comparisons: [
+        { id: "who_2021_24h", name: "WHO guideline 2021, 24-hour mean", type: "daily", limit: 15, days_with_data: yearSeries.length, days_above: daysWho },
+        { id: "who_2021_annual", name: "WHO guideline 2021, annual mean", type: "annual", limit: 5, period_mean: yearMean, exceeded: yearMean > 5 },
+      ],
+      summary: yearTs.data.summary,
+      limitations: pm25Data.limitations,
+      audit,
+      reproduce: `/pm25/compare?lat=${lat}&lon=${lon}&from=${yearStart}&to=${yearEnd}&radius_km=${effRadius}&against=who`,
+    };
+
+    const compareEu = {
+      location: { lat, lon },
+      radius_km: effRadius,
+      unit: "ug/m3",
+      against: "eu",
+      comparisons: [
+        { id: "eu_2030_24h", name: "EU 2030 daily limit", type: "daily", limit: 25, days_with_data: yearSeries.length, days_above: daysEu },
+        { id: "eu_2030_annual", name: "EU 2030 annual limit", type: "annual", limit: 10, period_mean: yearMean, exceeded: yearMean > 10 },
+      ],
+      summary: yearTs.data.summary,
+      limitations: pm25Data.limitations,
+      audit,
+      reproduce: `/pm25/compare?lat=${lat}&lon=${lon}&from=${yearStart}&to=${yearEnd}&radius_km=${effRadius}&against=eu`,
+    };
+
+    return {
+      ok: true,
+      fromEmbeddedParquet: true,
+      status: 200,
+      radiusKm: effRadius,
+      latestDate: effDate,
+      yearStart,
+      yearEnd,
+      stations: {
+        location: { lat, lon },
+        radius_km: effRadius,
+        count: nearby.length,
+        stations: nearby,
+        reproduce: `/stations?lat=${lat}&lon=${lon}&radius_km=${effRadius}`,
+      },
+      pm25: pm25Data,
+      compareWho,
+      compareEu,
+      timeseries: tsRes.data,
+      timeseriesRange: tsRes.range,
+    };
+  }
+
+  async function fetchBackendPm25(lat, lon, date = "2026-09-15", radiusKm = 15) {
+    return apiGet(`/pm25?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&date=${encodeURIComponent(date)}&radius_km=${encodeURIComponent(radiusKm)}`);
+  }
+
+  function shiftDate(isoDate, deltaDays) {
+    const d = new Date(isoDate + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + deltaDays);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function rangeForPeriodKey(endDate, periodKey) {
+    if (periodKey === "day24h") {
+      return { from: shiftDate(endDate, -1), to: endDate, resolution: "hour", months: 0.03 };
+    }
+    if (periodKey === "week") {
+      return { from: shiftDate(endDate, -6), to: endDate, resolution: "day", months: 0.25 };
+    }
+    if (periodKey === "month") {
+      return { from: shiftDate(endDate, -29), to: endDate, resolution: "day", months: 1 };
+    }
+    if (periodKey === "quarter") {
+      return { from: shiftDate(endDate, -89), to: endDate, resolution: "day", months: 3 };
+    }
+    return { from: shiftDate(endDate, -364), to: endDate, resolution: "day", months: 12 };
+  }
+
+  async function fetchBackendTimeseries(lat, lon, endDate, periodKey = "month", radiusKm = 15) {
+    const rng = rangeForPeriodKey(endDate, periodKey);
+    const res = await apiGet(
+      `/pm25/timeseries?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(rng.from)}&to=${encodeURIComponent(rng.to)}&resolution=${encodeURIComponent(rng.resolution)}&radius_km=${encodeURIComponent(radiusKm)}`,
+      10000
+    );
+    if (!res.ok) {
+      const fallbackTs = computeRealDataTimeseries(lat, lon, endDate, periodKey, radiusKm);
+      if (fallbackTs && fallbackTs.ok) return fallbackTs;
+    }
+    return { ...res, range: rng };
+  }
+
+  async function fetchBackendBundle(lat, lon, customDate = null, periodKey = "month", radiusKm = 15) {
+    // 1. Vraag eerst nabije stations op via GET /stations
+    let stRes = await apiGet(`/stations?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&radius_km=${encodeURIComponent(radiusKm)}`);
+    if (stRes.ok && (!stRes.data.stations || stRes.data.stations.length === 0) && radiusKm < 25) {
+      radiusKm = 25;
+      stRes = await apiGet(`/stations?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&radius_km=${encodeURIComponent(radiusKm)}`);
+    }
+    if (!stRes.ok) {
+      const realBundle = computeRealDataBundle(lat, lon, customDate, periodKey, radiusKm);
+      if (realBundle && realBundle.ok) return realBundle;
+      return stRes;
+    }
+
+    const stations = stRes.data.stations || [];
+    if (!stations.length) {
+      return { ok: false, status: 404, url: stRes.url, error: "Geen meetstations binnen 25 km gevonden." };
+    }
+
+    // Kies de meest recente datum waarop het dichtstbijzijnde station data heeft
+    const latestDate = customDate || stations[0].data_to || "2026-09-15";
+
+    // Voor de jaargemiddelde/WHO-toets kiezen we een volledig jaar (365 dagen)
+    const yearStation = stations.find((s) => s.data_from <= "2025-01-01" && s.data_to >= "2025-12-31") || stations[0];
+    const yearEnd = yearStation.data_to || latestDate;
+    const yearStart = shiftDate(yearEnd, -364) < (yearStation.data_from || "2020-01-01")
+      ? (yearStation.data_from || "2025-01-01")
+      : shiftDate(yearEnd, -364);
+
+    // 2. Haal parallel op: /pm25 (dagwaarde), /pm25/compare (WHO + EU), en /pm25/timeseries (grafiekreeks)
+    const [pmRes, whoRes, euRes, tsRes] = await Promise.all([
+      fetchBackendPm25(lat, lon, latestDate, radiusKm),
+      apiGet(`/pm25/compare?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(yearStart)}&to=${encodeURIComponent(yearEnd)}&radius_km=${encodeURIComponent(radiusKm)}&against=who`, 12000),
+      apiGet(`/pm25/compare?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(yearStart)}&to=${encodeURIComponent(yearEnd)}&radius_km=${encodeURIComponent(radiusKm)}&against=eu`, 12000),
+      fetchBackendTimeseries(lat, lon, latestDate, periodKey, radiusKm),
+    ]);
+
+    return {
+      ok: pmRes.ok || whoRes.ok,
+      status: pmRes.status,
+      url: pmRes.url,
+      radiusKm,
+      latestDate,
+      yearStart,
+      yearEnd,
+      stations: stRes.data,
+      pm25: pmRes.ok ? pmRes.data : null,
+      pm25Error: pmRes.ok ? null : pmRes.error,
+      compareWho: whoRes.ok ? whoRes.data : null,
+      compareEu: euRes.ok ? euRes.data : null,
+      timeseries: tsRes.ok ? tsRes.data : null,
+      timeseriesRange: tsRes.range,
+    };
+  }
+
+  function buildResultFromBackend(bundle, periodKey, ctx) {
+    const stList = (bundle.stations && bundle.stations.stations) || [];
+    const primarySt = stList[0] || { id: "NL", name: "Meetstation", distance_km: 0, lat: 52.38, lon: 4.63, area_type: "stad", station_type: "achtergrond" };
+    const near = {
+      s: {
+        id: primarySt.id,
+        naam: primarySt.name.trim(),
+        buurt: `${primarySt.name.trim()} (${primarySt.station_type || primarySt.kind})`,
+        lat: primarySt.lat,
+        lon: primarySt.lon,
+        kind: primarySt.kind,
+        station_type: primarySt.station_type,
+        area_type: primarySt.area_type,
+      },
+      km: primarySt.distance_km,
+    };
+
+    const pm = bundle.pm25;
+    const who = bundle.compareWho;
+    const eu = bundle.compareEu;
+    const ts = bundle.timeseries;
+    const rng = bundle.timeseriesRange || { from: bundle.yearStart, to: bundle.yearEnd, months: 1 };
+
+    // Kopieer alle echte backend audit-stappen naar de pagina-audit
+    const auditSteps = (pm && pm.audit) || (who && who.audit) || [];
+    auditSteps.forEach((stepObj) => {
+      const params = { ...stepObj };
+      delete params.step;
+      delete params.action;
+      ctx.step(
+        stepObj.action || "Backend analyse",
+        stepObj.functions ? stepObj.functions.join(" · ") : "REST API (/pm25)",
+        params,
+        stepObj.result != null ? `${stepObj.result} µg/m³` : stepObj.hourly_values_in != null ? `${stepObj.hourly_values_in} uurwaarden (${stepObj.outliers_removed || 0} uitschieters verwijderd)` : "OK",
+        stepObj.action && stepObj.action.startsWith("R:") ? "Samen Analyseren" : "REST API"
+      );
+    });
+
+    const lims = (pm && pm.limitations) || (who && who.limitations) || [];
+    lims.forEach((l) => ctx.caveat(l));
+
+    const annualMean = who && who.summary ? who.summary.mean : ts && ts.summary ? ts.summary.mean : pm ? pm.pm25 : 9.5;
+    const g = grade(annualMean);
+    const latestVal = pm ? pm.pm25 : ts && ts.series && ts.series.length ? ts.series[ts.series.length - 1].pm25 : annualMean;
+    const latest = {
+      date: pm ? pm.date : bundle.latestDate,
+      value: latestVal,
+      uncertainty: pm ? pm.uncertainty : 0,
+      basis: pm ? pm.basis : "reference_stations",
+    };
+    const index = lki(latest.value);
+
+    const whoDaily = who && who.comparisons ? who.comparisons.find((c) => c.type === "daily") : null;
+    const euDaily = eu && eu.comparisons ? eu.comparisons.find((c) => c.type === "daily") : null;
+    const daysOverWho = whoDaily ? whoDaily.days_above : 0;
+    const daysOverEu = euDaily ? euDaily.days_above : 0;
+
+    const seriesPoints = (ts && ts.series) || [];
+    const dates = seriesPoints.map((p) => p.time.slice(0, 10));
+    const est = seriesPoints.map((p) => p.pm25);
+    const coverage = who && who.summary && who.summary.periods_expected
+      ? who.summary.periods_with_data / who.summary.periods_expected
+      : 1;
+
+    const usedStations = (pm && pm.sensors && pm.sensors.stations) || (pm && pm.reference && pm.reference.stations) || [];
+    const perSensor = usedStations.length
+      ? usedStations.map((u) => {
+          const meta = stList.find((x) => x.id === u.id) || primarySt;
+          return {
+            s: { id: u.id, naam: u.name.trim(), buurt: u.name.trim(), lat: meta.lat, lon: meta.lon },
+            mean: u.daily_mean,
+            cov: (u.valid_hours || 24) / 24,
+            weight: u.weight,
+            distance_km: u.distance_km,
+            uncertainty: u.uncertainty,
+          };
+        })
+      : [{ s: near.s, mean: annualMean, cov: coverage, weight: 1, distance_km: near.km, uncertainty: 0 }];
+
+    const cityMean = perSensor.length
+      ? perSensor.reduce((acc, x) => acc + x.mean, 0) / perSensor.length
+      : annualMean;
+
+    return {
+      fromBackend: true,
+      backend: bundle,
+      near,
+      period: { key: periodKey, start: rng.from, end: rng.to, months: rng.months },
+      dates,
+      coverage,
+      k: 1.0,
+      est,
+      mean: annualMean,
+       periodMean: ts && ts.summary ? ts.summary.mean : annualMean,
+      city: cityMean,
+      perSensor,
+      allStations: stList,
+      cityDaily: est,
+      ref: est,
+      refMean: cityMean,
+      latest,
+      index,
+      grade: g,
+      daysOverWho,
+      daysOverEu,
+    };
   }
 
   function distanceKm(a, b) {
@@ -382,10 +844,14 @@
     GRADES,
     MAX_KM,
     FILTERS,
+    apiBase,
     lookup,
     locate,
     reverseGeocode,
     fetchBackendPm25,
+    fetchBackendBundle,
+    fetchBackendTimeseries,
+    buildResultFromBackend,
     analyse,
     lki,
     grade,

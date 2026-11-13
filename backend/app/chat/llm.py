@@ -1,4 +1,6 @@
 """LLM clients: Claude through the Anthropic SDK, or the rule-based stub when there is no API key."""
+from __future__ import annotations
+
 import os
 from typing import Protocol
 

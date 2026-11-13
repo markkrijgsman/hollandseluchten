@@ -3,6 +3,8 @@
 The LLM never computes numbers. Every tool call and its full result (with audit) is returned to the client.
 Stateless: the client sends `history` back with each request.
 """
+from __future__ import annotations
+
 import json
 from datetime import date
 from typing import Any

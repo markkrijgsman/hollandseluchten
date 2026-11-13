@@ -1,4 +1,6 @@
 """Which code and data a result was computed with. Informational only: nothing keys on it."""
+from __future__ import annotations
+
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path

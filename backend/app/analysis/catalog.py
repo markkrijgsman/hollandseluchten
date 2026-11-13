@@ -1,4 +1,6 @@
 """What data exists: overall coverage and the stations near a point."""
+from __future__ import annotations
+
 import pandas as pd
 
 from ..data.repositories import ReferenceRepository, SensorRepository

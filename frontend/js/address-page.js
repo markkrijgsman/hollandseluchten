@@ -12,7 +12,7 @@
 
   const COLORS = { you: "#2277FF", city: "#202333", grey: "#B0BAC2" };
 
-  const state = { lookup: null, period: "year", backendDate: "2026-08-15", backendRes: null };
+  const state = { lookup: null, period: "month", backendDate: null, backendBundle: null };
   let leafletMap = null;
 
   const CHROME = {
@@ -378,37 +378,34 @@
     </details>`;
   }
 
-  function backendBox(apiRes) {
-    if (!apiRes || apiRes.offline) return "";
-    if (!apiRes.ok) {
+  function backendBox(bundle) {
+    if (!bundle) return "";
+    if (!bundle.ok) {
       return `<div class="backend-box">
-        <strong>${esc(t("Live Luchtmeetnet-data (/pm25 API)", "Live Luchtmeetnet data (/pm25 API)"))}</strong>
-        <div class="backend-controls">
-          <label for="backend-date" class="muted small">${esc(t("Meetdatum (2020 – sep 2026):", "Measurement date (2020 – Sep 2026):"))}</label>
-          <input type="date" id="backend-date" value="${esc(state.backendDate)}" min="2020-01-01" max="2026-09-30" />
-        </div>
-        <p class="muted small" style="margin:0">${esc(String(apiRes.error))}</p>
+        <strong>${esc(t("Lokale REST API (http://localhost:8000)", "Local REST API (http://localhost:8000)"))}</strong>
+        <p class="muted small" style="margin:6px 0 0">${esc(String(bundle.error || "Backend niet bereikbaar — teruggevallen op lokale demodata."))}</p>
       </div>`;
     }
-    const d = apiRes.data;
-    const grp = d.basis === "sensors" ? d.sensors : d.reference;
+    const d = bundle.pm25;
+    const grp = d && (d.basis === "sensors" ? d.sensors : d.reference);
     const stations = (grp && grp.stations) || [];
+    const base = D.apiBase();
     return `<div class="backend-box">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <strong>${esc(t("Live Luchtmeetnet-referentiemeting (/pm25 API)", "Live Luchtmeetnet reference measurement (/pm25 API)"))}</strong>
-        <span class="pill ok">${esc(t(`Daggemiddelde: ${fmt(d.pm25)} µg/m³`, `Daily mean: ${fmt(d.pm25)} µg/m³`))}</span>
+        <strong>${esc(t("Live REST API · Officiële Parquet-dataset (Luchtmeetnet + Analyse-Together)", "Live REST API · Official Parquet dataset (Luchtmeetnet + Analyse-Together)"))}</strong>
+        ${d ? `<span class="pill ok">${esc(t(`Gewogen daggemiddelde (${d.date}): ${fmt(d.pm25)} µg/m³`, `Weighted daily mean (${d.date}): ${fmt(d.pm25)} µg/m³`))}</span>` : ""}
       </div>
       <div class="backend-controls">
-        <label for="backend-date" class="muted small">${esc(t("Kies datum uit de officiële Parquet-dataset:", "Pick date from official Parquet dataset:"))}</label>
-        <input type="date" id="backend-date" value="${esc(d.date)}" min="2020-01-01" max="2026-09-30" />
-        <span class="muted small">${esc(t(`${stations.length} station(s) binnen ${d.radius_km} km (1/d² gewogen)`, `${stations.length} station(s) within ${d.radius_km} km (1/d² weighted)`))}</span>
+        <label for="backend-date" class="muted small">${esc(t("Meetdatum (2020 – sep 2026):", "Measurement date (2020 – Sep 2026):"))}</label>
+        <input type="date" id="backend-date" value="${esc(bundle.latestDate)}" min="2020-01-01" max="2026-09-30" />
+        <span class="muted small">${esc(t(`${stations.length} station(s) binnen ${bundle.radiusKm} km (1/d² gewogen)`, `${stations.length} station(s) within ${bundle.radiusKm} km (1/d² weighted)`))}</span>
       </div>
       ${
         stations.length
           ? `<div class="table-wrap"><table class="norms"><thead><tr>
               <th>${esc(t("Station", "Station"))}</th>
               <th>${esc(t("Afstand", "Distance"))}</th>
-              <th>${esc(t("Gewicht", "Weight"))}</th>
+              <th>${esc(t("Gewicht (1/d²)", "Weight (1/d²)"))}</th>
               <th>${esc(t("Geldige uren", "Valid hours"))}</th>
               <th>${esc(t("Daggemiddelde", "Daily mean"))}</th>
             </tr></thead><tbody>
@@ -426,19 +423,27 @@
             </tbody></table></div>`
           : ""
       }
+      <p class="muted small" style="margin:8px 0 0">
+        <b>REST API endpoints gebruikt:</b>
+        <a href="${esc(base + (bundle.stations && bundle.stations.reproduce ? bundle.stations.reproduce : "/stations"))}" target="_blank" rel="noopener"><code>GET /stations</code></a> ·
+        ${d && d.reproduce ? `<a href="${esc(base + d.reproduce)}" target="_blank" rel="noopener"><code>GET /pm25</code></a> · ` : ""}
+        ${bundle.compareWho && bundle.compareWho.reproduce ? `<a href="${esc(base + bundle.compareWho.reproduce)}" target="_blank" rel="noopener"><code>GET /pm25/compare (WHO)</code></a> · ` : ""}
+        ${bundle.timeseries && bundle.timeseries.reproduce ? `<a href="${esc(base + bundle.timeseries.reproduce)}" target="_blank" rel="noopener"><code>GET /pm25/timeseries</code></a> · ` : ""}
+        <a href="${esc(base + "/docs")}" target="_blank" rel="noopener">Swagger UI (/docs)</a>
+      </p>
     </div>`;
   }
 
   function params(obj) {
     const label = (k) => k.replace(/_/g, " ");
     return Object.entries(obj || {})
-      .map(([k, v]) => `<div><span class="muted">${esc(label(k))}:</span> ${esc(Array.isArray(v) ? v.join(", ") : v)}</div>`)
+      .map(([k, v]) => `<div><span class="muted">${esc(label(k))}:</span> ${esc(Array.isArray(v) ? v.join(", ") : typeof v === "object" && v !== null ? JSON.stringify(v) : v)}</div>`)
       .join("");
   }
 
   // LAAG 2D: Voor onderzoekers / nieuwsgierigen: Audit Trail & ruwe stationsdata
-  function auditDrawer(audit, apiRes) {
-    const badgeClass = (bron) => (bron === "Samen Analyseren" ? "sa" : bron === "Backend API" ? "api" : "own");
+  function auditDrawer(audit, bundle) {
+    const badgeClass = (bron) => (bron === "Samen Analyseren" ? "sa" : bron === "REST API" || bron === "Backend API" ? "api" : "own");
     const badgeLabel = (bron) =>
       bron === "Samen Analyseren"
         ? "Samen Analyseren"
@@ -446,8 +451,8 @@
           ? "PDOK"
           : bron === "Geolocation"
             ? "Browser API"
-            : bron === "Backend API"
-              ? "Backend /pm25"
+            : bron === "REST API" || bron === "Backend API"
+              ? "REST API"
               : t("Aanvullend", "Added by us");
     return `<details class="drawer" id="berekening">
       <summary>
@@ -458,11 +463,11 @@
         <span class="summary-tag">${esc(t("Voor onderzoekers", "Audit trail"))}</span>
       </summary>
       <div class="drawer-body">
-        ${backendBox(apiRes)}
+        ${backendBox(bundle)}
         ${audit.beperkingen.length ? `<div class="caveats"><h3>${esc(t("Kanttekeningen & onzekerheid", "Limitations & uncertainty"))}</h3><ul>${audit.beperkingen.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : ""}
         <p class="muted small">${esc(t(
-          "Groen = gevalideerde R-functie uit Samen Analyseren, blauw = live FastAPI backend (/pm25), oranje = aanvullende stap.",
-          "Green = validated R function from Samen Analyseren, blue = live FastAPI backend (/pm25), orange = additional step."
+          "Groen = gevalideerde R-functie uit Samen Analyseren, blauw = lokale REST API (localhost:8000), oranje = aanvullende stap.",
+          "Green = validated R function from Samen Analyseren, blue = local REST API (localhost:8000), orange = additional step."
         ))}</p>
         <div class="table-wrap"><table class="steps"><thead><tr><th>#</th><th>${esc(t("Stap", "Step"))}</th><th>${esc(t("Functie", "Function"))}</th><th>${esc(t("Instellingen", "Settings"))}</th><th>${esc(t("Uitkomst", "Outcome"))}</th></tr></thead><tbody>
         ${audit.stappen.map((s) => `<tr><td>${s.nr}</td><td>${esc(s.stap)}</td>
@@ -477,29 +482,8 @@
   function periodSelect() {
     const opt = (k, nl, en) => `<option value="${k}"${state.period === k ? " selected" : ""}>${esc(t(nl, en))}</option>`;
     return `<select id="period" class="select" aria-label="${esc(t("Periode", "Period"))}">
-      ${opt("year", "Afgelopen 12 maanden", "Last 12 months")}${opt("quarter", "Afgelopen 3 maanden", "Last 3 months")}${opt("month", "Afgelopen maand", "Last month")}
+      ${opt("week", "Afgelopen 7 dagen", "Last 7 days")}${opt("month", "Afgelopen 30 dagen", "Last 30 days")}${opt("quarter", "Afgelopen 3 maanden", "Last 3 months")}${opt("year", "Heel jaar (365 dagen)", "Full year (365 days)")}
     </select>`;
-  }
-
-  function appendBackendAudit(ctx, apiRes) {
-    if (!apiRes) return;
-    if (apiRes.ok && apiRes.data && Array.isArray(apiRes.data.audit)) {
-      apiRes.data.audit.forEach((step) => {
-        const { step: _nr, action, functions, result, ...rest } = step;
-        const fnName = Array.isArray(functions) ? functions.join(" · ") : "GET /pm25";
-        const bron = Array.isArray(functions) ? "Samen Analyseren" : "Backend API";
-        ctx.step(
-          `Backend: ${action}`,
-          fnName,
-          rest,
-          result != null ? `${result} µg/m³` : action === "R: Analyse-Together functions" ? `${step.hourly_values_in} uren (${step.outliers_removed} uitschieters verwijderd)` : "OK",
-          bron
-        );
-      });
-      if (Array.isArray(apiRes.data.limitations)) {
-        apiRes.data.limitations.forEach((lim) => ctx.caveat(lim));
-      }
-    }
   }
 
   function render() {
@@ -539,23 +523,20 @@
     } else {
       ctx.step(
         t("Adres of postcode opzoeken", "Look up address or postcode"),
-        lk.offline ? t("aanvullend: postcodetabel (offline)", "added: postcode table (offline)") : "PDOK Locatieserver · free",
+        lk.offline ? t("aanvullend: postcodetabel (offline)", "added: postcode table (offline)") : "PDOK Locatieserver / GET /geocode",
         { zoekopdracht: lk.postcode, ...(houseStr.trim() ? { huisnummer: houseStr.trim() } : { modus: t("alleen postcode/plaats", "postcode/place only") }) },
         `${lk.place.label} (${lk.place.lat.toFixed(4)}, ${lk.place.lon.toFixed(4)})`,
         lk.offline ? "Aanvullend" : "PDOK"
       );
     }
 
-    appendBackendAudit(ctx, state.backendRes);
-    const r = D.analyse(lk.place, state.period, ctx);
-
-    ctx.caveat(t(
-      "Goedkope burgersensoren hebben een meetonzekerheid van circa 20% (minimaal 5,3 µg/m³) en worden daarom vergeleken met het officiële Luchtmeetnet-referentiestation.",
-      "Low-cost citizen sensors have an uncertainty of roughly 20% (at least 5.3 µg/m³) and are therefore calibrated against the official Luchtmeetnet reference station."
-    ));
+    const r =
+      state.backendBundle && state.backendBundle.ok
+        ? D.buildResultFromBackend(state.backendBundle, state.period, ctx)
+        : D.analyse(lk.place, state.period, ctx);
 
     out.innerHTML =
-      verdictCard(lk, r, state.backendRes) +
+      verdictCard(lk, r, state.backendBundle && state.backendBundle.pm25 ? { ok: true, data: state.backendBundle.pm25 } : null) +
       `<section class="drilldown-section" aria-labelledby="drilldown-heading">
         <div class="drilldown-head">
           <h2 id="drilldown-heading">${esc(t("Meer weten? Klik om verder te kijken", "Want to know more? Click to explore further"))}</h2>
@@ -564,7 +545,7 @@
         ${!r.tooFar ? healthDrawer(r) : ""}
         ${compareDrawer(r)}
         ${normsDrawer(r)}
-        ${auditDrawer(ctx.audit, state.backendRes)}
+        ${auditDrawer(ctx.audit, state.backendBundle)}
       </section>`;
 
     openDrawers.forEach((id) => {
@@ -612,7 +593,18 @@
         meanById[item.s.id] = item.mean;
       });
     }
-    M.sensors.forEach((s) => {
+    const mapStations =
+      r && r.fromBackend && Array.isArray(r.allStations) && r.allStations.length
+        ? r.allStations.map((st) => ({
+            id: st.id,
+            naam: st.name.trim(),
+            buurt: `${st.station_type || st.kind} · ${st.area_type || ""}`,
+            lat: st.lat,
+            lon: st.lon,
+          }))
+        : M.sensors;
+
+    mapStations.forEach((s) => {
       const isNear = r && r.near && r.near.s && r.near.s.id === s.id;
       const val = meanById[s.id];
       const marker = L.circleMarker([s.lat, s.lon], {
@@ -622,14 +614,14 @@
         weight: 2,
         fillOpacity: 0.95,
       }).addTo(map);
-      const valText = val != null ? `<br/>${esc(t("Gemiddeld", "Average"))}: <b>${fmt(val)} µg/m³</b>` : "";
+      const valText = val != null ? `<br/>${esc(t("Daggemiddelde", "Daily mean"))}: <b>${fmt(val)} µg/m³</b>` : "";
       const nearBadge = isNear ? ` · <b>${esc(t("dichtstbijzijnd", "nearest"))} (${fmt(r.near.km)} km)</b>` : "";
       marker.bindPopup(
         `<b>${esc(s.naam)}</b> <span style="color:#6b7080">(${esc(s.id)})</span><br/>${esc(s.buurt)}${nearBadge}${valText}`
       );
     });
 
-    if (M.reference && M.reference.lat && M.reference.lon) {
+    if ((!r || !r.fromBackend) && M.reference && M.reference.lat && M.reference.lon) {
       L.circleMarker([M.reference.lat, M.reference.lon], {
         radius: 6,
         fillColor: "#202333",
@@ -661,7 +653,7 @@
     );
 
     if (bounds.length > 1 && r && !r.tooFar) {
-      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 15 });
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 });
     }
 
     map.on("click", async (ev) => {
@@ -690,8 +682,22 @@
     initMap(lk, r);
     const periodEl = document.getElementById("period");
     if (periodEl) {
-      periodEl.addEventListener("change", (e) => {
+      periodEl.addEventListener("change", async (e) => {
         state.period = e.target.value;
+        if (state.backendBundle && state.backendBundle.ok && state.lookup) {
+          const { lat, lon } = state.lookup.place;
+          const tsRes = await D.fetchBackendTimeseries(
+            lat,
+            lon,
+            state.backendBundle.latestDate,
+            state.period,
+            state.backendBundle.radiusKm
+          );
+          if (tsRes.ok) {
+            state.backendBundle.timeseries = tsRes.data;
+            state.backendBundle.timeseriesRange = tsRes.range;
+          }
+        }
         const y = window.scrollY;
         render();
         window.scrollTo(0, y);
@@ -703,7 +709,7 @@
         if (!e.target.value || !state.lookup) return;
         state.backendDate = e.target.value;
         const { lat, lon } = state.lookup.place;
-        state.backendRes = await D.fetchBackendPm25(lat, lon, state.backendDate, 15);
+        state.backendBundle = await D.fetchBackendBundle(lat, lon, state.backendDate, state.period, 15);
         const y = window.scrollY;
         render();
         window.scrollTo(0, y);
@@ -737,7 +743,7 @@
 
   async function refreshWithPlace(res) {
     state.lookup = res;
-    state.backendRes = await D.fetchBackendPm25(res.place.lat, res.place.lon, state.backendDate, 15);
+    state.backendBundle = await D.fetchBackendBundle(res.place.lat, res.place.lon, state.backendDate, state.period, 15);
     render();
   }
 
