@@ -1,5 +1,17 @@
 # Hollandse Luchten
 
+## Developer Quick Start
+
+- **Frontend (Zero-build HTML/CSS/JS)**: See **[frontend/README.md](frontend/README.md)**
+  ```bash
+  python3 -m http.server 8080 --bind 127.0.0.1 --directory frontend
+  # Open http://localhost:8080/adres.html or http://localhost:8080/index.html
+  ```
+- **Backend (FastAPI + R/Parquet REST API on port 8000)**: See **[backend/API.md](backend/API.md)**
+- **Live Public Demo**: [https://hollandse-luchten-analyse.web.app/adres.html](https://hollandse-luchten-analyse.web.app/adres.html)
+
+---
+
 [Who is who?](https://gemini.google.com/app/d9a55ca4bfe6de50)
 * [Luchtmeetnet](https://www.luchtmeetnet.nl): het officiële meetnetwerk van het RIVM met dure sensoren
 * [Samen Meten](https://www.samenmeten.nl): verzamelt data afkomstig van goedkopere consumentensensoren
