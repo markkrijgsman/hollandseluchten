@@ -87,7 +87,7 @@ button, input, select { font: inherit; color: inherit; }
 .info-dot { color: var(--blue); }
 
 /* Kaarten */
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px 24px; margin: 0 0 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px 24px; margin: 0 0 16px; scroll-margin-top: 72px; }
 .card h2 { font-size: 1.3rem; margin: 0; }
 .card h3 { font-size: 1rem; margin: 18px 0 6px; }
 .card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }

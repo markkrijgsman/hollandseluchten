@@ -6,7 +6,8 @@
   const { esc } = window.Charts;
   const t = (nl, en) => I.t(nl, en);
 
-  const state = { question: "", overrides: {} };
+  const state = { question: "", overrides: {}, allExamples: false };
+  const FEATURED = 5;
 
   const AUDIT_KEYS = {
     vraag: ["vraag", "question"],
@@ -150,7 +151,7 @@
         : plan.status === "clarify"
           ? t("Ik herken geen soort analyse in je vraag.", "I do not recognise a type of analysis in your question.")
           : t("Hier is geen data-analyse voor nodig.", "This does not need a data analysis.");
-      return `<section class="card"><h2><span class="num">1</span>${esc(understood)}</h2>
+      return `<section class="card" id="begrepen"><h2><span class="num">1</span>${esc(understood)}</h2>
         <dl class="plan"><dt>${esc(t("Soort vraag", "Type of question"))}</dt><dd>${esc(plan.label)}${plan.matchedOn ? ` <span class="muted">(${esc(t("herkend op", "matched on"))} “${esc(plan.matchedOn)}”)</span>` : ""}</dd></dl>
         <p class="muted">${esc(note)}</p></section>`;
     }
@@ -169,7 +170,7 @@
     const buurten = [...new Set(M.sensors.map((s) => s.buurt))];
     const p = plan.period;
 
-    return `<section class="card"><h2><span class="num">1</span>${esc(understood)}</h2>
+    return `<section class="card" id="begrepen"><h2><span class="num">1</span>${esc(understood)}</h2>
       <dl class="plan">
         <dt>${esc(t("Soort vraag", "Type of question"))}</dt><dd>${esc(plan.label)} <span class="muted">(${esc(t("herkend op", "matched on"))} “${esc(plan.matchedOn)}”)</span></dd>
         <dt>${esc(t("Waar", "Where"))}</dt><dd>${esc(plan.buurt || t("Heel Haarlem", "All of Haarlem"))}: ${names.join(", ")}</dd>
@@ -199,14 +200,14 @@
           <label>${esc(t("Bovengrens (µg/m³)", "Upper limit (µg/m³)"))} <input type="number" name="cutoff" value="${f.cutoff}" min="20" max="500" step="5"></label>
           <label>${esc(t("Vastgelopen na (dagen)", "Stuck after (days)"))} <input type="number" name="stuckDays" value="${f.stuckDays}" min="2" max="60"></label>
           ${plan.intent === "threshold" ? `<label>${esc(t("Grenswaarde (µg/m³)", "Limit (µg/m³)"))} <input type="number" name="threshold" value="${plan.threshold}" min="1" max="100"></label>` : ""}
-          <button type="submit">${esc(t("Opnieuw analyseren", "Analyse again"))}</button>
+          <button type="submit" class="btn-primary">${esc(t("Opnieuw analyseren", "Analyse again"))}</button>
         </form>
       </details>
     </section>`;
   }
 
   function answerCard(res, audit) {
-    return `<section class="card answer"><h2><span class="num">2</span>${esc(t("Antwoord", "Answer"))}</h2>
+    return `<section class="card answer" id="antwoord"><h2><span class="num">2</span>${esc(t("Antwoord", "Answer"))}</h2>
       <p class="short">${esc(res.short)}</p>
       ${res.meaning ? `<div class="meaning"><h3>${esc(t("Wat betekent dit voor jou?", "What does this mean for you?"))}</h3>${res.meaning}</div>` : ""}
       ${res.meaning ? `<h3>${esc(t("De cijfers", "The numbers"))}</h3>` : ""}
@@ -230,20 +231,22 @@
   }
 
   function auditCard(audit) {
-    return `<section class="card"><h2><span class="num">3</span>${esc(t("Audit trail", "Audit trail"))}</h2>
+    return `<section class="card" id="audit"><h2><span class="num">3</span>${esc(t("Audit trail", "Audit trail"))}</h2>
       <p class="muted">${esc(t(
         "Elke stap die tot dit antwoord leidde. Groen = gevalideerde functie uit Samen Analyseren, oranje = aanvullende eigen berekening.",
         "Every step that led to this answer. Green = a validated Samen Analyseren function, orange = an extra calculation of our own."
       ))}</p>
-      <table class="steps"><thead><tr><th>#</th><th>${esc(t("Stap", "Step"))}</th><th>${esc(t("Functie", "Function"))}</th><th>${esc(t("Instellingen", "Settings"))}</th><th>${esc(t("Uitkomst", "Outcome"))}</th></tr></thead><tbody>
+      <details class="audit"><summary>${esc(t(`Bekijk alle ${audit.stappen.length} stappen`, `See all ${audit.stappen.length} steps`))}</summary>
+      <div class="table-wrap"><table class="steps"><thead><tr><th>#</th><th>${esc(t("Stap", "Step"))}</th><th>${esc(t("Functie", "Function"))}</th><th>${esc(t("Instellingen", "Settings"))}</th><th>${esc(t("Uitkomst", "Outcome"))}</th></tr></thead><tbody>
       ${audit.stappen
         .map((s) => `<tr><td>${s.nr}</td><td>${esc(s.stap)}</td>
             <td><span class="badge ${s.bron === "Samen Analyseren" ? "sa" : "own"}">${esc(s.bron === "Samen Analyseren" ? "Samen Analyseren" : t("Aanvullend", "Added by us"))}</span><code>${esc(s.functie)}</code></td>
             <td>${params(s.parameters)}</td><td>${esc(s.resultaat)}</td></tr>`)
         .join("")}
-      </tbody></table>
+      </tbody></table></div>
       <details class="json"><summary>${esc(t("Volledige audit trail (JSON)", "Full audit trail (JSON)"))}</summary><pre>${esc(JSON.stringify(localize(audit), null, 2))}</pre></details>
-      <button type="button" id="download" class="secondary">${esc(t("Download audit trail (JSON)", "Download audit trail (JSON)"))}</button>
+      </details>
+      <button type="button" id="download" class="btn-outline">${esc(t("Download audit trail (JSON)", "Download audit trail (JSON)"))}</button>
     </section>`;
   }
 
@@ -253,7 +256,7 @@
 
     out.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => {
       ask(b.dataset.q);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      document.getElementById("begrepen").scrollIntoView({ behavior: "smooth", block: "start" });
     }));
 
     const form = document.getElementById("adjust");
@@ -286,10 +289,39 @@
     });
   }
 
+  const CHROME = {
+    "nav-address": ["Mijn adres", "My address"],
+    "nav-ask": ["Stel een vraag", "Ask a question"],
+    "side-tools": ["Luchtkwaliteit", "Air quality"],
+    "side-address": ["Mijn adres", "My address"],
+    "side-ask": ["Stel een vraag", "Ask a question"],
+    "side-page": ["Op deze pagina", "On this page"],
+    "side-question": ["Je vraag", "Your question"],
+    "side-plan": ["Zo heb ik het begrepen", "How I understood it"],
+    "side-answer": ["Antwoord", "Answer"],
+    "side-audit": ["Audit trail", "Audit trail"],
+    badge: ["Prototype · nepdata", "Prototype · mock data"],
+  };
+
+  function renderExamples() {
+    const list = state.allExamples ? I.examples : I.examples.slice(0, FEATURED);
+    document.getElementById("examples").innerHTML = list
+      .map((ex) => {
+        const q = t(ex.nl, ex.en);
+        return `<button type="button" class="chip" data-example="${esc(q)}">${esc(q)}</button>`;
+      })
+      .join("");
+    document.querySelectorAll("[data-example]").forEach((b) => b.addEventListener("click", () => ask(b.dataset.example)));
+    const more = document.getElementById("more");
+    more.textContent = state.allExamples
+      ? t("Minder voorbeelden", "Fewer examples")
+      : t(`Meer voorbeelden (${I.examples.length - FEATURED})`, `More examples (${I.examples.length - FEATURED})`);
+    more.setAttribute("aria-expanded", String(state.allExamples));
+  }
+
   function applyChrome() {
-    document.title = t("Luchtvraag · Hollandse Luchten (prototype)", "Luchtvraag · Hollandse Luchten (prototype)");
-    document.getElementById("badge").textContent = t("Prototype · nepdata", "Prototype · mock data");
-    document.getElementById("address-link").textContent = t("Lucht op mijn adres", "Air at my address");
+    document.title = t("Stel een vraag · Hollandse Luchten (prototype)", "Ask a question · Hollandse Luchten (prototype)");
+    Object.entries(CHROME).forEach(([id, [nl, en]]) => (document.getElementById(id).textContent = t(nl, en)));
     document.getElementById("title").textContent = t("Stel je vraag over de luchtkwaliteit", "Ask your question about air quality");
     document.getElementById("lead").textContent = t(
       "Ik zet je vraag om in een analyse met de functies van Samen Analyseren, laat zien welke keuzes ik maak, en leg uit wat je wel en niet uit de uitkomst kunt concluderen.",
@@ -300,14 +332,9 @@
       "For example: is the air better at the weekend than on weekdays?"
     );
     document.getElementById("submit").textContent = t("Analyseer", "Analyse");
-    document.getElementById("try").textContent = t("Probeer een voorbeeld:", "Try an example:");
-    document.getElementById("examples").innerHTML = I.examples
-      .map((ex) => {
-        const q = t(ex.nl, ex.en);
-        return `<button type="button" class="chip" data-example="${esc(q)}">${esc(q)}</button>`;
-      })
-      .join("");
-    document.querySelectorAll("[data-example]").forEach((b) => b.addEventListener("click", () => ask(b.dataset.example)));
+    document.getElementById("q").setAttribute("aria-label", t("Je vraag", "Your question"));
+    document.getElementById("try").textContent = t("Probeer:", "Try:");
+    renderExamples();
     document.getElementById("foot").innerHTML = `${esc(t(
       "Alle cijfers zijn nepdata voor 6 fictieve sensoren in Haarlem en één fictief referentiestation",
       "All figures are mock data for 6 fictional sensors in Haarlem and one fictional reference station"
@@ -334,6 +361,11 @@
       document.getElementById("q").value = translated;
     }
     run();
+  });
+
+  document.getElementById("more").addEventListener("click", () => {
+    state.allExamples = !state.allExamples;
+    renderExamples();
   });
 
   document.getElementById("ask").addEventListener("submit", (e) => {
