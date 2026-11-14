@@ -13,8 +13,8 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory frontend
 ```
 
 Then open either page in your browser:
-- **Postcode & Adres Check (Primary Citizen Entry)**: [http://localhost:8080/adres.html](http://localhost:8080/adres.html)
-- **Verdiepende Analyse & Chat (Deep-Dive Explorer)**: [http://localhost:8080/index.html](http://localhost:8080/index.html)
+- **Address check (primary entry)**: [http://localhost:8080/](http://localhost:8080/)
+- **Chat**: [http://localhost:8080/gesprek/](http://localhost:8080/gesprek/)
 
 > **Note:** Always serve `frontend/` over `http://localhost` rather than opening `.html` files via `file://` so browser `fetch()` requests and CORS work properly.
 
@@ -25,7 +25,7 @@ Then open either page in your browser:
 The frontend automatically supports **two modes** with zero configuration changes:
 
 ### Mode A: Full Local Backend REST API (`http://localhost:8000`)
-When you also run the FastAPI backend locally on port `8000` (see [`../backend/API.md`](../backend/API.md)):
+When you also run the FastAPI backend locally on port `8000` (see [`../backend/API.md`](../backend/API.md)). It needs R and a clone of Analyse-Together next to this repo, otherwise the analysis endpoints answer 503 and the frontend falls back to the embedded dataset:
 
 ```bash
 cd backend
@@ -55,22 +55,25 @@ If `localhost:8000` is **not** running (or when hosted publicly on Firebase/GitH
 
 ```text
 frontend/
-├── adres.html          # Layer 1 Citizen Verdict Card + Layer 2 Progressive Disclosure Drawers
-├── index.html          # Deep-Dive Sensor & Reference Explorer + Natural Language Chat
-├── app.css             # Styling for adres.html (progressive disclosure, verdict cards, map, charts)
-├── styles.css          # Styling for index.html (sensor explorer)
+├── index.html          # Address check: verdict card + progressive disclosure drawers, map, charts
+├── gesprek/index.html  # Chat page (POST /chat)
+├── app.css, styles.css # Styling
 └── js/
-    ├── address.js      # API client (localhost:8000), PDOK fallback, and 1/d² Parquet calculator
-    ├── address-page.js # UI controller for adres.html (verdict card, Leaflet map, Canvas charts)
-    ├── real-data.js    # Pre-computed daily PM2.5 series for 67 Luchtmeetnet stations (2025–2026)
-    ├── mock-data.js    # Fallback station/sensor catalog for index.html (hydrates from real-data.js)
-    ├── app.js          # UI controller for index.html + POST /chat integration
-    ├── analysis.js     # Client-side statistical helpers for index.html
-    ├── charts.js       # Canvas chart renderers for index.html
-    ├── planner.js      # Query plan builder for index.html
-    ├── intents.js      # Intent templates for index.html
-    └── i18n.js         # NL/EN translations
+    ├── api.js          # The only place that talks to the backend: base URL, GET helper, time-outs, and the
+    │                   #   translation of the API's typed `audit` steps and `considerations` for display
+    ├── address.js      # Address lookup (PDOK), backend bundle (/pm25, /compare, /timeseries, /trend, /events),
+    │                   #   offline fallback on real-data.js, norms (/guidelines) and date range (/coverage)
+    ├── address-page.js # UI controller for index.html
+    ├── chat.js         # UI controller for the chat page; shows the answer, caution notes and the API calls made
+    ├── real-data.js    # Embedded snapshot of the reference data (offline mode only)
+    ├── mock-data.js, analysis.js, charts.js  # Haarlem sensor mock-up, helpers and Canvas charts
+    └── i18n.js         # NL/EN translations and the chat's example questions
 ```
+
+The pages show what the backend returns instead of computing it: audit steps are read by `code`
+(`request`, `select_stations`, `r_functions`, ...), and the notes shown with a result are the API's
+`considerations` (level, origin and message). Norms and the selectable date range come from `/guidelines` and
+`/coverage`. The offline fallback (embedded data) is only used when no backend answers, and the page says so.
 
 ---
 

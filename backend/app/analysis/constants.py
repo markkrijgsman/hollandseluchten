@@ -7,3 +7,4 @@ WEIGHT_FORMULA = f"1/max(d, {MIN_DISTANCE_KM} km)^2"
 SENSOR_PREFIX = "HL_"  # keeps kit ids from matching the reference-station pattern "^NL.[0-9]." in R
 SENSOR, REFERENCE = "sensor", "reference"  # station kinds
 BASIS = {SENSOR: "sensors", REFERENCE: "reference_stations"}  # kind -> name in responses
+TREND_STABLE_UG_M3_PER_DAY = 0.005  # a slope below this is reported as "stable" (same value the frontend fallback uses)

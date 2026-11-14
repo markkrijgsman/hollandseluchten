@@ -79,6 +79,34 @@ class CompareStep(CompactStep):
     levels: list[dict[str, Any]]
 
 
+class WeekdaySplitStep(CompactStep):
+    code: Literal["weekday_split"] = "weekday_split"
+    action: str = "weekday vs weekend split"
+    weekday_days: int
+    weekend_days: int
+    weekday_mean: float | None = None
+    weekend_mean: float | None = None
+    difference: float | None = None
+
+
+class TrendStep(CompactStep):
+    code: Literal["linear_trend"] = "linear_trend"
+    action: str = "linear trend"
+    slope_ug_m3_per_day: float
+    direction: str
+    stable_below: float = Field(description="Slopes smaller than this (ug/m3 per day) count as stable")
+    n_points: int
+
+
+class EventsStep(CompactStep):
+    code: Literal["events_above_threshold"] = "events_above_threshold"
+    action: str = "events above threshold"
+    threshold: float
+    n_events: int
+    n_days_with_data: int
+    share_above: float
+
+
 class VersionsStep(AuditStep):
     """Which code and data produced the result (informational). Fields come from versions.py."""
     model_config = ConfigDict(extra="allow")
@@ -88,7 +116,7 @@ class VersionsStep(AuditStep):
 
 AuditStepT = Annotated[
     RequestStep | SelectStationsStep | RFunctionsStep | StationMeansStep | WeightedMeanStep | CompareStep
-    | VersionsStep, Field(discriminator="code")]
+    | WeekdaySplitStep | TrendStep | EventsStep | VersionsStep, Field(discriminator="code")]
 
 
 class AuditLog:

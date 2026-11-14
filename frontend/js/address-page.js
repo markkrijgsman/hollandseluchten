@@ -12,8 +12,8 @@
 
   const COLORS = { you: "#2277FF", city: "#202333", grey: "#B0BAC2" };
 
-  const DATE_MIN = "2020-01-01";
-  const DATE_MAX = "2026-09-30";
+  let DATE_MIN = "2020-01-01"; // overschreven door /coverage zodra de backend antwoordt
+  let DATE_MAX = "2026-09-30";
   const state = { lookup: null, period: "month", customRange: null, backendDate: null, backendBundle: null };
   let leafletMap = null;
 
@@ -58,8 +58,10 @@
       step(stap, functie, parameters, resultaat, bron = "Samen Analyseren") {
         audit.stappen.push({ nr: audit.stappen.length + 1, stap, bron, functie, parameters, resultaat });
       },
-      caveat(text) {
-        if (!audit.beperkingen.includes(text)) audit.beperkingen.push(text);
+      // meta komt uit een API-`consideration` (level, origin, code); eigen opmerkingen van de pagina zijn "frontend"
+      caveat(text, meta = {}) {
+        if (audit.beperkingen.some((c) => c.tekst === text)) return;
+        audit.beperkingen.push({ tekst: text, niveau: meta.level || "info", herkomst: meta.origin || "frontend", code: meta.code });
       },
     };
   }
@@ -700,7 +702,7 @@
       </div>
       <div class="backend-controls">
         <label for="backend-date" class="muted small">${esc(t("Meetdatum (2020 – sep 2026):", "Measurement date (2020 – Sep 2026):"))}</label>
-        <input type="date" id="backend-date" value="${esc(bundle.latestDate)}" min="2020-01-01" max="2026-09-30" />
+        <input type="date" id="backend-date" value="${esc(bundle.latestDate)}" min="${DATE_MIN}" max="${DATE_MAX}" />
         <span class="muted small">${esc(t(`${stations.length} station(s) binnen ${bundle.radiusKm} km (1/d² gewogen)`, `${stations.length} station(s) within ${bundle.radiusKm} km (1/d² weighted)`))}</span>
       </div>
       ${
@@ -744,6 +746,19 @@
       .join("");
   }
 
+  // Opmerkingen bij het resultaat: ernstigste eerst, met herkomst (methode van Samen Analyseren of keuze van deze API).
+  function caveatsHtml(list) {
+    if (!list.length) return "";
+    const rank = { warning: 0, caution: 1, info: 2 };
+    const icon = { warning: "⚠", caution: "!", info: "i" };
+    const items = [...list].sort((a, b) => rank[a.niveau] - rank[b.niveau]).map((c) =>
+      `<li class="caveat caveat-${esc(c.niveau)}"><span class="caveat-icon" aria-hidden="true">${icon[c.niveau]}</span> ${esc(c.tekst)}${
+        c.herkomst && c.herkomst !== "frontend" ? ` <span class="muted small">(${esc(window.Api.originLabel(c.herkomst))})</span>` : ""
+      }</li>`
+    ).join("");
+    return `<div class="caveats"><h3>${esc(t("Kanttekeningen & onzekerheid", "Limitations & uncertainty"))}</h3><ul>${items}</ul></div>`;
+  }
+
   // LAAG 2D: Voor onderzoekers / nieuwsgierigen: Audit Trail & ruwe stationsdata
   function auditDrawer(audit, bundle) {
     const badgeClass = (bron) => (bron === "Samen Analyseren" ? "sa" : bron === "REST API" || bron === "Backend API" ? "api" : "own");
@@ -767,7 +782,7 @@
       </summary>
       <div class="drawer-body">
         ${backendBox(bundle)}
-        ${audit.beperkingen.length ? `<div class="caveats"><h3>${esc(t("Kanttekeningen & onzekerheid", "Limitations & uncertainty"))}</h3><ul>${audit.beperkingen.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : ""}
+        ${caveatsHtml(audit.beperkingen)}
         <p class="muted small">${esc(t(
           "Groen = gevalideerde R-functie uit Samen Analyseren, blauw = lokale REST API (localhost:8000), oranje = aanvullende stap.",
           "Green = validated R function from Samen Analyseren, blue = local REST API (localhost:8000), orange = additional step."
@@ -1226,6 +1241,12 @@
   applyChrome();
   renderSearchPeriodSelect();
   bindSearchPeriod();
+  D.loadBackendConfig().then(({ range }) => {
+    if (range) [DATE_MIN, DATE_MAX] = [range.from, range.to];
+    start();
+  });
+
+  function start() {
   const params0 = new URLSearchParams(window.location.search);
   if (params0.get("postcode")) {
     document.getElementById("postcode").value = params0.get("postcode");
@@ -1244,5 +1265,6 @@
     document.getElementById("postcode").value = "2011 RD";
     document.getElementById("number").value = "2";
     submit("2011RD", "2");
+  }
   }
 })();

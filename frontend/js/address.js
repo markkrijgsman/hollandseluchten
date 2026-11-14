@@ -20,10 +20,9 @@
   const FILTERS = { enabled: true, cutoff: 100, stuckDays: 7 };
   const MAX_KM = 4;
 
-  function apiBase() {
-    const param = new URLSearchParams(window.location.search).get("api");
-    return (param || window.HL_API_URL || "http://localhost:8000").replace(/\/+$/, "");
-  }
+  // Backend-toegang staat in api.js; hier alleen een korte alias voor paden met querystring.
+  const { apiBase } = window.Api;
+  const apiGet = (path, timeoutMs) => window.Api.get(path, {}, timeoutMs);
 
   // Jaargemiddelde PM2.5 (µg/m³). WHO is een gezondheidsadvies, EU-grenzen zijn wet.
   const NORMS = { who: 5, eu2030: 10, euNow: 25, whoDay: 15, euDay2030: 25 };
@@ -39,10 +38,28 @@
     { max: 11, key: "zeer_slecht", nl: "Zeer slecht", en: "Very bad", color: "#7b3fa0" },
   ];
 
+  // Normen en datumbereik komen van de backend (/guidelines uit config/guidelines.toml, /coverage);
+  // bij geen backend blijven de standaardwaarden hierboven en het bereik van de ingebedde dataset.
+  async function loadBackendConfig() {
+    const [norms, cov] = await Promise.all([window.Api.get("/guidelines", {}, 3000), window.Api.get("/coverage", {}, 3000)]);
+    if (norms.ok) {
+      const d = norms.data;
+      Object.assign(NORMS, { who: d.who, eu2030: d.eu2030, euNow: d.euNow, whoDay: d.who_daily });
+      NORMS.verified = d.verified; // false = de waarde is nog niet gecontroleerd tegen de bron
+      [NORMS.who, NORMS.eu2030, NORMS.whoDay, NORMS.euNow].forEach((max, i) => { GRADES[i].max = max; });
+    }
+    let range = null;
+    if (cov.ok) {
+      const sources = [cov.data.reference_stations, cov.data.sensors].filter(Boolean);
+      range = { from: sources.map((x) => x.from).sort()[0], to: sources.map((x) => x.to).sort().reverse()[0] };
+    }
+    return { norms: norms.ok, range };
+  }
+
   const GRADES = [
     { grade: "A", max: NORMS.who, color: "#2f9e6b" },
     { grade: "B", max: NORMS.eu2030, color: "#8cc152", fg: "#202333" },
-    { grade: "C", max: 15, color: "#e9b824", fg: "#202333" },
+    { grade: "C", max: NORMS.whoDay, color: "#e9b824", fg: "#202333" },
     { grade: "D", max: NORMS.euNow, color: "#ef7d32" },
     { grade: "E", max: Infinity, color: "#d93f3f" },
   ];
@@ -212,34 +229,6 @@
         { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
       );
     });
-  }
-
-  function isRemoteHost() {
-    const h = window.location.hostname;
-    const hasParam = new URLSearchParams(window.location.search).has("api");
-    return h !== "localhost" && h !== "127.0.0.1" && !hasParam && !window.HL_API_URL;
-  }
-
-  async function apiGet(path, timeoutMs = 8000) {
-    const base = apiBase();
-    const url = `${base}${path}`;
-    const effTimeout = isRemoteHost() ? Math.min(timeoutMs, 900) : timeoutMs;
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(effTimeout) });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        return {
-          ok: false,
-          status: res.status,
-          url,
-          error: (body && body.detail && (body.detail.message || body.detail)) || `HTTP ${res.status}`,
-          audit: (body && body.detail && body.detail.audit) || [],
-        };
-      }
-      return { ok: true, status: 200, url, data: body };
-    } catch (err) {
-      return { ok: false, status: 0, url, offline: true, error: err.message || "Backend unreachable" };
-    }
   }
 
   function computeRealDataTimeseries(lat, lon, endDate, periodKey = "month", radiusKm = 15) {
@@ -517,29 +506,34 @@
   async function fetchTrend(lat, lon, from, to, radiusKm = 15) {
     return apiGet(
       `/pm25/trend?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&radius_km=${encodeURIComponent(radiusKm)}`,
-      10000
+      window.Api.TIMEOUT.year
     );
   }
 
   async function fetchEvents(lat, lon, from, to, radiusKm = 15, threshold = 15) {
     return apiGet(
       `/pm25/events?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&radius_km=${encodeURIComponent(radiusKm)}&threshold=${encodeURIComponent(threshold)}`,
-      10000
+      window.Api.TIMEOUT.year
     );
   }
 
   // Simple linear-regression trend from a time-series array [{ time, pm25 }]
+  // Zelfde methode en drempel als de backend (/pm25/trend): kleinste kwadraten op dagnummers,
+  // dus dagen zonder data tellen als gat. Onder TREND_STABLE µg/m³ per dag heet het "stabiel".
+  const TREND_STABLE = 0.005;
   function computeTrend(series) {
     const pts = series.filter((p) => p.pm25 != null);
     if (pts.length < 7) return null;
-    const n = pts.length;
+    const day0 = new Date(pts[0].time.slice(0, 10) + "T00:00:00Z").getTime();
+    const xs = pts.map((p) => (new Date(p.time.slice(0, 10) + "T00:00:00Z").getTime() - day0) / 86400000);
     const ys = pts.map((p) => p.pm25);
-    const xm = (n - 1) / 2;
+    const n = pts.length;
+    const xm = xs.reduce((a, b) => a + b, 0) / n;
     const ym = ys.reduce((a, b) => a + b, 0) / n;
     let num = 0, den = 0;
-    ys.forEach((y, i) => { num += (i - xm) * (y - ym); den += (i - xm) ** 2; });
+    ys.forEach((y, i) => { num += (xs[i] - xm) * (y - ym); den += (xs[i] - xm) ** 2; });
     const slope = den > 0 ? num / den : 0;
-    const direction = slope < -0.005 ? "improving" : slope > 0.005 ? "worsening" : "stable";
+    const direction = slope < -TREND_STABLE ? "improving" : slope > TREND_STABLE ? "worsening" : "stable";
     return { slope_ug_m3_per_day: slope, direction, period_mean: ym, n_days: n };
   }
 
@@ -588,7 +582,7 @@
     const rng = rangeForPeriodKey(endDate, periodKey);
     const res = await apiGet(
       `/pm25/timeseries?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(rng.from)}&to=${encodeURIComponent(rng.to)}&resolution=${encodeURIComponent(rng.resolution)}&radius_km=${encodeURIComponent(radiusKm)}`,
-      10000
+      window.Api.TIMEOUT.series
     );
     if (!res.ok) {
       const fallbackTs = computeRealDataTimeseries(lat, lon, endDate, periodKey, radiusKm);
@@ -628,8 +622,8 @@
     // 2. Haal parallel op: /pm25 (dagwaarde), /pm25/compare (WHO + EU), /pm25/timeseries, /pm25/trend, /pm25/events
     const [pmRes, whoRes, euRes, tsRes, trendRes, eventsRes] = await Promise.all([
       fetchBackendPm25(lat, lon, latestDate, radiusKm),
-      apiGet(`/pm25/compare?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(yearStart)}&to=${encodeURIComponent(yearEnd)}&radius_km=${encodeURIComponent(radiusKm)}&against=who`, 12000),
-      apiGet(`/pm25/compare?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(yearStart)}&to=${encodeURIComponent(yearEnd)}&radius_km=${encodeURIComponent(radiusKm)}&against=eu`, 12000),
+      apiGet(`/pm25/compare?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(yearStart)}&to=${encodeURIComponent(yearEnd)}&radius_km=${encodeURIComponent(radiusKm)}&against=who`, window.Api.TIMEOUT.year),
+      apiGet(`/pm25/compare?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(yearStart)}&to=${encodeURIComponent(yearEnd)}&radius_km=${encodeURIComponent(radiusKm)}&against=eu`, window.Api.TIMEOUT.year),
       fetchBackendTimeseries(lat, lon, latestDate, periodKey, radiusKm),
       fetchTrend(lat, lon, yearStart, yearEnd, radiusKm),
       fetchEvents(lat, lon, yearStart, yearEnd, radiusKm),
@@ -678,23 +672,12 @@
     const ts = bundle.timeseries;
     const rng = bundle.timeseriesRange || { from: bundle.yearStart, to: bundle.yearEnd, months: 1 };
 
-    // Kopieer alle echte backend audit-stappen naar de pagina-audit
-    const auditSteps = (pm && pm.audit) || (who && who.audit) || [];
-    auditSteps.forEach((stepObj) => {
-      const params = { ...stepObj };
-      delete params.step;
-      delete params.action;
-      ctx.step(
-        stepObj.action || "Backend analyse",
-        stepObj.functions ? stepObj.functions.join(" · ") : "REST API (/pm25)",
-        params,
-        stepObj.result != null ? `${stepObj.result} µg/m³` : stepObj.hourly_values_in != null ? `${stepObj.hourly_values_in} uurwaarden (${stepObj.outliers_removed || 0} uitschieters verwijderd)` : "OK",
-        stepObj.action && stepObj.action.startsWith("R:") ? "Samen Analyseren" : "REST API"
-      );
-    });
-
-    const lims = (pm && pm.limitations) || (who && who.limitations) || [];
-    lims.forEach((l) => ctx.caveat(l));
+    // Stappen en opmerkingen komen getypeerd uit de API (`audit[].code`, `considerations`)
+    const auditSource = (pm && pm.audit) || (who && who.audit) || [];
+    window.Api.auditSteps(auditSource).forEach((st) => ctx.step(st.label, st.fn, st.params, st.result, st.source));
+    window.Api.considerations(who, eu, pm, bundle.trend, bundle.events).forEach((c) =>
+      ctx.caveat(c.message, { level: c.level, origin: c.origin, code: c.code })
+    );
 
     const annualMean = who && who.summary ? who.summary.mean : ts && ts.summary ? ts.summary.mean : pm ? pm.pm25 : 9.5;
     const g = grade(annualMean);
@@ -953,6 +936,7 @@
     MAX_KM,
     FILTERS,
     apiBase,
+    loadBackendConfig,
     lookup,
     locate,
     reverseGeocode,

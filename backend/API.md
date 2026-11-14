@@ -61,6 +61,13 @@ It is a LangChain agent (`langchain.agents.create_agent`, on LangGraph) whose to
 
 ## Required project structure
 
+> **R and the Analyse-Together clone are required.** `/pm25`, `/pm25/timeseries`, `/pm25/compare`, `/pm25/weekday`,
+> `/pm25/trend` and `/pm25/events` apply the validated R functions from Analyse-Together (calibration flag, outlier
+> cut-off, sensor uncertainty). There is no Python fallback, because results must come from the validated code and the
+> audit must say what really ran. If `Rscript` or the clone is missing, these endpoints answer `503` with
+> "R is not installed" or "Analyse-Together checkout not found". Install R, clone the repository next to this one (or set
+> `HL_ANALYSE_TOGETHER_DIR`) and restart. `/geocode`, `/coverage`, `/stations` and `/guidelines` work without R.
+
 The backend reads data and R code from sibling directories. Clone everything into one parent directory:
 
 ```
@@ -128,4 +135,4 @@ The live OpenAI test (marker `live`) needs `OPENAI_API_KEY`.
 | `OPENAI_API_KEY` | unset | enables OpenAI for `/chat` |
 | `HL_CHAT_MODEL` | `gpt-4o` | OpenAI model id |
 
-Defaults are relative to `backend/`. A missing Analyse-Together checkout or R installation makes the API return 503.
+Defaults are relative to `backend/`. A missing Analyse-Together checkout or R installation makes the analysis endpoints return 503 (no fallback).

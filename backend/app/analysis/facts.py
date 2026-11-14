@@ -38,6 +38,14 @@ FACTS: dict[str, str] = {
     "min_stations": "fewest stations behind any period's result",
     "max_share": "largest weight share of one station in the result",
     "uncertainty_ratio": "mean of uncertainty / value over the periods",
+    # weekday / trend / events
+    "weekday_days": "weekdays (Mon-Fri) with a result",
+    "weekend_days": "weekend days (Sat-Sun) with a result",
+    "trend_points": "days the trend line is fitted on",
+    "trend_stable_below": "slopes below this (ug/m3 per day) are called stable",
+    "events_threshold": "threshold for an event (ug/m3)",
+    "events_days_with_data": "days with a result",
+    "events_ambiguous_days": "days whose uncertainty range contains the threshold",
     # per geocoded place
     "place_query": "what the user asked for",
     "place_candidates": "number of places the geocoder returned",

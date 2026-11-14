@@ -136,6 +136,7 @@ class GuidelinesNorms(Model):
     eu2030: float = Field(description="EU Directive 2024/2881 annual mean, applies from 2030 (ug/m3)")
     euNow: float = Field(description="EU Directive 2008/50/EC annual mean, current (ug/m3)")
     who_daily: float = Field(description="WHO 2021 24-hour mean (ug/m3)")
+    verified: dict[str, bool] = Field(description="Per key: was the value checked against its source?")
 
 
 class SourceCoverage(Model):
@@ -177,23 +178,21 @@ class StationsResponse(Reproducible):
 
 class WeekdayGroup(Model):
     n_days: int
-    mean: float
-    min: float
-    max: float
+    mean: float | None = Field(description="None when no day of this kind has data")
+    min: float | None
+    max: float | None
 
 
-class WeekdayResponse(Reproducible):
+class WeekdayResponse(Analysis):
     location: Location
     radius_km: float
     unit: str
     weekday: WeekdayGroup
     weekend: WeekdayGroup
-    difference: float
-    limitations: list[str]
-    audit: list[AuditStep]
+    difference: float | None = Field(description="weekend mean minus weekday mean; None when either group is empty")
 
 
-class TrendResponse(Reproducible):
+class TrendResponse(Analysis):
     location: Location
     radius_km: float
     unit: str
@@ -201,8 +200,6 @@ class TrendResponse(Reproducible):
     direction: Literal["improving", "worsening", "stable"]
     period_mean: float
     n_days: int
-    limitations: list[str]
-    audit: list[AuditStep]
 
 
 class EventDay(Model):
@@ -212,7 +209,7 @@ class EventDay(Model):
     basis: Basis
 
 
-class EventsResponse(Reproducible):
+class EventsResponse(Analysis):
     location: Location
     radius_km: float
     unit: str
@@ -221,5 +218,3 @@ class EventsResponse(Reproducible):
     n_events: int
     n_days_with_data: int
     share_above: float
-    limitations: list[str]
-    audit: list[AuditStep]

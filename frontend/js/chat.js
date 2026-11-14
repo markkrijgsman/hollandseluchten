@@ -6,10 +6,7 @@
 
   const state = { history: [], loading: false };
 
-  function apiBase() {
-    const param = new URLSearchParams(window.location.search).get("api");
-    return (param || window.HL_API_URL || "http://localhost:8000").replace(/\/+$/, "");
-  }
+  const { apiBase } = window.Api;
 
   async function checkCoverage() {
     const badge = document.getElementById("badge");
@@ -50,6 +47,17 @@
     const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
     const interpretation = Array.isArray(data.interpretation) ? data.interpretation : [];
     const llm = data.llm;
+    // opmerkingen uit de resultaten: wat de lezer moet weten bij dit antwoord (info staat ingeklapt)
+    const notes = window.Api.considerations(...(Array.isArray(data.results) ? data.results : []));
+    const important = notes.filter((c) => c.level !== "info");
+    const minor = notes.filter((c) => c.level === "info");
+    const noteLi = (c) =>
+      `<li class="caveat caveat-${esc(c.level)}">${esc(c.message)} <span class="muted small">(${esc(window.Api.originLabel(c.origin))})</span></li>`;
+    const notesHtml =
+      (important.length ? `<ul class="chat-notes">${important.map(noteLi).join("")}</ul>` : "") +
+      (minor.length
+        ? `<details class="chat-details"><summary>${esc(t(`Meer kanttekeningen (${minor.length})`, `More notes (${minor.length})`))}</summary><ul class="chat-notes">${minor.map(noteLi).join("")}</ul></details>`
+        : "");
 
     let suggestionsHtml = "";
     if (suggestions.length) {
@@ -76,6 +84,7 @@
     div.innerHTML = `
       <div class="chat-bubble">
         <div class="chat-answer">${esc(answer)}</div>
+        ${notesHtml}
         ${detailsHtml}
         ${llmBadge}
       </div>
@@ -127,11 +136,15 @@
       });
       hideTyping();
       if (!res.ok) {
+        const body = await res.json().catch(() => null);
         appendAssistantMessage({
-          answer: t(
-            `Er is iets misgegaan (HTTP ${res.status}). Probeer het opnieuw.`,
-            `Something went wrong (HTTP ${res.status}). Please try again.`
-          ),
+          answer:
+            res.status === 503 && body && body.detail
+              ? t(`De chat is niet beschikbaar: ${body.detail}`, `Chat is not available: ${body.detail}`)
+              : t(
+                  `Er is iets misgegaan (HTTP ${res.status}). Probeer het opnieuw.`,
+                  `Something went wrong (HTTP ${res.status}). Please try again.`
+                ),
         });
       } else {
         const data = await res.json();

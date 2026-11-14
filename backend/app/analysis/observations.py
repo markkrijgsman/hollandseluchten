@@ -50,14 +50,14 @@ class ObservationLoader:
             raise NoDataError(f"No PM2.5 data within {radius_km} km for {period_label(start, end)}", audit.as_dicts())
         data = pd.concat(frames, ignore_index=True)
 
-        rows = [{"station": r.station, "parameter": r.parameter, "value": float(r.value), "date": r.hour}
-                for r in data.itertuples()]
-        r_out = run_r_analysis(rows, cutoff, self.settings.analyse_together_dir, self.settings.rscript)
+        columns = {"station": data["station"].tolist(), "parameter": data["parameter"].tolist(),
+                   "value": data["value"].astype(float).tolist(), "date": data["hour"].tolist()}
+        r_out = run_r_analysis(columns, cutoff, self.settings.analyse_together_dir, self.settings.rscript)
         # functions and parameters are reported by R itself, so the audit shows what actually ran
-        facts = load_facts(len(rows), r_out["removed_outliers"], r_out["parameters"], self.sensors is not None)
+        facts = load_facts(len(data), r_out["removed_outliers"], r_out["parameters"], self.sensors is not None)
         audit.log(RFunctionsStep(functions=r_out["functions"], parameters=r_out["parameters"],
                                  hourly_values_in=facts["hourly_values_in"], outliers_removed=facts["outliers_removed"]))
-        if not r_out["rows"]:
+        if not r_out["rows"] or not len(r_out["rows"]["value"]):
             raise NoDataError("All values were removed as outliers", audit.as_dicts())
         # only official stations have a station type (the sensor kits' metadata has none)
         stations = (data.rename(columns={"stationstype": "station_type"}).drop_duplicates("station")

@@ -10,6 +10,10 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 DEFAULT_FILE = Path(__file__).resolve().parents[2] / "config" / "guidelines.toml"
+class GuidelinesError(ValueError):
+    """The guidelines file does not define what a client asks for."""
+
+
 REQUIRED = {"id", "name", "type", "limit", "source", "verified"}
 
 

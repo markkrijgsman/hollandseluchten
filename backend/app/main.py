@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.language_models import BaseChatModel
 
+from .analysis.guidelines import GuidelinesError
 from .analysis.models import (
     CompareResponse,
     CoverageResponse,
@@ -84,7 +85,10 @@ def coverage(p: Annotated[CoverageRequest, Query()], service: Service):
 @app.get("/guidelines", response_model=GuidelinesNorms,
          description="PM2.5 norm values (WHO and EU annual/daily limits) derived from the loaded guideline sets.")
 def guidelines(service: Service):
-    return service.norms().model_dump()
+    try:
+        return service.norms().model_dump()
+    except GuidelinesError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @app.get("/stations", response_model=StationsResponse, description=TOOLS["stations"].description)

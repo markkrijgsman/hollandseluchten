@@ -160,3 +160,54 @@ def test_tool_schemas_are_usable_for_llm():
     schema = TOOLS["pm25_compare"].model.model_json_schema(by_alias=True)
     assert {"lat", "lon", "from", "to"} <= set(schema["required"]) | set(schema["properties"])
     assert TOOLS["pm25_compare"].description.startswith("Compare")
+
+
+RANGE = {"lat": LAT, "lon": LON, "from": "2025-04-30", "to": "2025-05-02"}  # Wed-Fri in the synthetic reference data
+
+
+def test_weekday_without_weekend_days_has_empty_group_and_a_caution(make_client):
+    body = make_client().get("/pm25/weekday", params=RANGE).json()
+    assert body["weekday"]["n_days"] == 3 and body["weekday"]["mean"] is not None
+    assert body["weekend"] == {"n_days": 0, "mean": None, "min": None, "max": None} and body["difference"] is None
+    assert "few_weekend_days" in {c["code"] for c in body["considerations"]}
+    step = next(s for s in body["audit"] if s["code"] == "weekday_split")
+    assert step["weekend_days"] == 0 and "weekend_mean" not in step
+
+
+def test_trend_is_stable_on_flat_data_and_says_it_rests_on_few_days(make_client):
+    body = make_client().get("/pm25/trend", params=RANGE).json()
+    assert body["direction"] == "stable" and body["slope_ug_m3_per_day"] == 0 and body["n_days"] == 3
+    codes = {c["code"] for c in body["considerations"]}
+    assert {"trend_is_a_line", "trend_few_points"} <= codes
+    assert next(s for s in body["audit"] if s["code"] == "linear_trend")["stable_below"] == 0.005
+
+
+def test_events_lists_days_at_or_above_threshold(make_client):
+    client = make_client()
+    body = client.get("/pm25/events", params={**RANGE, "threshold": 13}).json()
+    assert body["n_events"] == 3 and body["n_days_with_data"] == 3 and body["share_above"] == 1.0
+    assert [e["date"] for e in body["events"]] == ["2025-04-30", "2025-05-01", "2025-05-02"]
+    assert client.get("/pm25/events", params={**RANGE, "threshold": 50}).json()["events"] == []
+    assert {"events_are_daily_means"} <= {c["code"] for c in body["considerations"]}
+
+
+def test_guidelines_norms_come_from_the_guideline_sets(make_client):
+    body = make_client().get("/guidelines").json()
+    assert {k: body[k] for k in ("who", "eu2030", "euNow", "who_daily")} == {"who": 5, "eu2030": 10, "euNow": 25,
+                                                                          "who_daily": 15}
+    assert body["verified"] == {"who": False, "eu2030": False, "euNow": True, "who_daily": False}
+
+
+def test_guidelines_fails_loudly_when_a_norm_is_missing(make_client, tmp_path, monkeypatch):
+    f = tmp_path / "g.toml"
+    f.write_text('[[levels.x]]\nid="a"\nnorm="who"\nname="n"\ntype="annual"\nlimit=5\nsource="s"\nverified=true\n')
+    monkeypatch.setenv("HL_GUIDELINES_FILE", str(f))
+    r = make_client().get("/guidelines")
+    assert r.status_code == 503 and "eu2030" in r.json()["detail"]
+
+
+def test_events_use_strictly_above_like_compare(make_client):
+    client = make_client()
+    day = client.get("/pm25", params={"lat": LAT, "lon": LON, "date": "2025-05-01"}).json()["pm25"]
+    at_limit = client.get("/pm25/events", params={**RANGE, "threshold": day}).json()
+    assert "2025-05-01" not in [e["date"] for e in at_limit["events"]]  # equal to the threshold is not above it

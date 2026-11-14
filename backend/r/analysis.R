@@ -1,7 +1,7 @@
 # Applies the validated Analyse-Together functions to hourly PM2.5 rows.
-# stdin : JSON {analyse_together_dir, cutoff, rows:[{station, parameter, value, date}]}
+# stdin : JSON {analyse_together_dir, cutoff, rows:{station:[], parameter:[], value:[], date:[]}}  (columns, not records)
 #         reference rows use parameter "pm25", sensor rows "pm25_kal"
-# stdout: JSON {rows:[... , sd], removed_outliers, functions}
+# stdout: JSON {rows:{station:[], ..., sd:[]}, removed_outliers, functions, parameters}
 suppressPackageStartupMessages({
   library(dplyr)
   library(jsonlite)
@@ -12,7 +12,7 @@ source(file.path(input$analyse_together_dir, "funs", "data_to_tool_fun.R"))
 
 df <- as.data.frame(input$rows, stringsAsFactors = FALSE)
 if (nrow(df) == 0) {
-  cat(toJSON(list(rows = list(), removed_outliers = 0L, functions = character(0), parameters = list()), auto_unbox = TRUE))
+  cat(toJSON(list(rows = setNames(list(), character(0)), removed_outliers = 0L, functions = character(0), parameters = list()), auto_unbox = TRUE))
   quit(status = 0)
 }
 
@@ -45,4 +45,4 @@ cat(toJSON(list(
     sensor_uncertainty_percent = eval(defaults$uc_pm25),
     sensor_uncertainty_min_ug_m3 = eval(defaults$uc_min_pm25)
   )
-), auto_unbox = TRUE, digits = NA, na = "null"))
+), auto_unbox = TRUE, digits = NA, na = "null", dataframe = "columns"))

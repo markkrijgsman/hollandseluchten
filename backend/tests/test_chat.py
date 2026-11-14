@@ -111,7 +111,8 @@ def test_stub_answer_mentions_cautions(client):
 
 def test_tools_are_exposed_with_schemas():
     tools = {t.name: t for t in build_tools(None)}
-    assert set(tools) == {"geocode", "coverage", "stations", "pm25", "pm25_timeseries", "pm25_compare"}
+    assert set(tools) == {"geocode", "coverage", "stations", "pm25", "pm25_timeseries", "pm25_compare", "pm25_weekday",
+                          "pm25_trend", "pm25_events"}
     assert "from" in tools["pm25_compare"].args_schema["properties"]
     assert tools["pm25_compare"].description.startswith("Compare")
 

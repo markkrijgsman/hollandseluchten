@@ -4,9 +4,12 @@
 #
 # Each level: id, name, type ("daily" or "annual"), limit, source, verified.
 # verified = false means the value was not checked against the source text; the API repeats this flag in its response.
+# norm (optional): marks the level that GET /guidelines reports under that key. The keys the frontend needs are
+# who, who_daily, eu2030 and euNow; each must be on exactly one level.
 
 [[levels.who]]
 id = "who_2021_24h"
+norm = "who_daily"
 name = "WHO guideline 2021, 24-hour mean"
 type = "daily"
 limit = 15
@@ -15,6 +18,7 @@ verified = false
 
 [[levels.who]]
 id = "who_2021_annual"
+norm = "who"
 name = "WHO guideline 2021, annual mean"
 type = "annual"
 limit = 5
@@ -23,6 +27,7 @@ verified = false
 
 [[levels.eu]]
 id = "eu_2008_annual"
+norm = "euNow"
 name = "EU limit value (Directive 2008/50/EC), annual mean"
 type = "annual"
 limit = 25
@@ -31,6 +36,7 @@ verified = true
 
 [[levels.eu2030]]
 id = "eu_2024_annual"
+norm = "eu2030"
 name = "EU limit value (Directive 2024/2881), annual mean (applies from 2030)"
 type = "annual"
 limit = 10

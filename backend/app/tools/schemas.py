@@ -88,7 +88,7 @@ class TrendRequest(RangeRequest):
 
 class EventsRequest(RangeRequest):
     """Days with PM2.5 above a threshold in a date range (max 366 days)."""
-    threshold: float = Field(15.0, gt=0, description="Days with PM2.5 >= threshold are reported as events (ug/m3)")
+    threshold: float = Field(15.0, gt=0, description="Days with PM2.5 above this value are reported as events (ug/m3)")
 
     @model_validator(mode="after")
     def _length(self):

@@ -5,9 +5,13 @@
 - **Frontend (Zero-build HTML/CSS/JS)**: See **[frontend/README.md](frontend/README.md)**
   ```bash
   python3 -m http.server 8080 --bind 127.0.0.1 --directory frontend
-  # Open http://localhost:8080/adres.html or http://localhost:8080/index.html
+  # Open http://localhost:8080/ (address check) or http://localhost:8080/gesprek/ (chat)
   ```
 - **Backend (FastAPI + R/Parquet REST API on port 8000)**: See **[backend/API.md](backend/API.md)**
+  > **The backend needs R and a clone of [Analyse-Together](https://github.com/rivm-syso/Analyse-Together) next to this
+  > repo.** The calculations call the validated R functions from that repo; there is no Python substitute. Without R or
+  > the clone, every analysis endpoint answers `503` ("R is not installed" / "Analyse-Together checkout not found").
+  > Setup: see "Required project structure" in [backend/API.md](backend/API.md).
 - **Live Public Demo**: [https://hollandse-luchten-analyse.web.app/adres.html](https://hollandse-luchten-analyse.web.app/adres.html)
 
 ---

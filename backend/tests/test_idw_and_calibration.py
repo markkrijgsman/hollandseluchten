@@ -1,4 +1,7 @@
 """Demonstrates: distance-weighted daily mean, use of calibrated data, use of the calibration flag."""
+import sys
+
+import pandas as pd
 import pytest
 
 from app.analysis.constants import MIN_DISTANCE_KM
@@ -73,7 +76,10 @@ def test_api_result_uses_calibrated_values(tmp_path, make_service):
 
 # ---------------------------------------------------------------- calibration flag (R: add_ref_kal)
 def r(rows, cutoff=100.0):
-    return run_r_analysis(rows, cutoff, AT_DIR)
+    """Runs the R functions on records; returns the result with `rows` as records again (the bridge uses columns)."""
+    columns = {k: [x[k] for x in rows] for k in ("station", "parameter", "value", "date")}
+    out = run_r_analysis(columns, cutoff, AT_DIR)
+    return {**out, "rows": pd.DataFrame(out["rows"]).to_dict("records")}
 
 
 def row(station, parameter, value, date="2025-05-01T00"):
@@ -101,3 +107,12 @@ def test_outlier_cutoff_applies_to_calibrated_values(requires_r):
     out = r([row("HL_A", "pm25_kal", 150.0), row("HL_A", "pm25_kal", 50.0, "2025-05-01T01")], cutoff=100)
     assert out["removed_outliers"] == 1
     assert [x["value"] for x in out["rows"]] == [50.0]
+
+
+def test_missing_r_or_checkout_is_an_error_not_a_silent_substitute(tmp_path):
+    from app.integrations.r_bridge import RError
+    columns = {"station": ["NL1"], "parameter": ["pm25"], "value": [1.0], "date": ["2025-05-01T00"]}
+    with pytest.raises(RError, match="R is not installed"):
+        run_r_analysis(columns, 100.0, AT_DIR, rscript="no-such-rscript")
+    with pytest.raises(RError, match="Analyse-Together checkout not found"):
+        run_r_analysis(columns, 100.0, tmp_path, rscript=sys.executable)  # any executable passes the R check

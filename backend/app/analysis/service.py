@@ -5,15 +5,31 @@ from functools import cached_property
 from ..data.repositories import ReferenceRepository, SensorRepository
 from ..settings import Settings
 from . import weighting
-from .audit import AuditLog, CompareStep, RequestStep, VersionsStep, WeightedMeanStep
+from .audit import (
+    AuditLog,
+    CompareStep,
+    EventsStep,
+    RequestStep,
+    TrendStep,
+    VersionsStep,
+    WeekdaySplitStep,
+    WeightedMeanStep,
+)
 from .catalog import Catalog
 from .compare import compare_with_levels
 from .considerations import evaluate, load_rules
-from .constants import BASIS, DAY_DEFINITION, REFERENCE, SENSOR, UNIT, WEIGHT_FORMULA
-from .guidelines import load_guidelines
+from .constants import (
+    BASIS,
+    DAY_DEFINITION,
+    REFERENCE,
+    SENSOR,
+    TREND_STABLE_UG_M3_PER_DAY,
+    UNIT,
+    WEIGHT_FORMULA,
+)
+from .guidelines import GuidelinesError, load_guidelines
 from .models import (
     CompareResponse,
-    Consideration,
     CoverageResponse,
     EventDay,
     EventsResponse,
@@ -38,7 +54,7 @@ from .versions import collect_versions
 def _slope(xs: list[float], ys: list[float]) -> float:
     n = len(xs)
     sx, sy = sum(xs), sum(ys)
-    sxy = sum(x * y for x, y in zip(xs, ys))
+    sxy = sum(x * y for x, y in zip(xs, ys, strict=True))
     sxx = sum(x * x for x in xs)
     denom = n * sxx - sx * sx
     return (n * sxy - sx * sy) / denom if denom else 0.0
@@ -88,8 +104,8 @@ class Pm25Service:
 
     def _series(self, audit: AuditLog, lat: float, lon: float, start: Date, end: Date, resolution: str,
                 radius_km: float, cutoff: float, min_hours: int
-                ) -> tuple[list[SeriesPoint], SeriesSummary, list[Consideration]]:
-        """Series, summary and considerations (the audit's closing 'versions' step is added by the caller)."""
+                ) -> tuple[list[SeriesPoint], SeriesSummary, dict]:
+        """Series, summary and the run's facts (the audit's closing 'versions' step is added by the caller)."""
         res = RESOLUTIONS[resolution]
         audit.log(RequestStep(lat=lat, lon=lon, start=start.isoformat(), end=end.isoformat(), resolution=resolution,
                               radius_km=radius_km, outlier_cutoff=cutoff,
@@ -105,14 +121,14 @@ class Pm25Service:
                                    periods=result.facts["periods"], periods_from_sensors=result.facts["sensor_periods"]))
         summary = SeriesSummary(periods_with_data=len(series), periods_expected=expected,
                                 mean=round(sum(values) / len(values), 2), min=min(values), max=max(values))
-        return series, summary, evaluate(self.rules, result.facts)
+        return series, summary, result.facts
 
     def timeseries(self, lat: float, lon: float, start: Date, end: Date, resolution: str = "day",
                    radius_km: float = 5.0, cutoff: float = 100.0, min_hours: int = 18) -> TimeseriesResponse:
         """Distance-weighted PM2.5 per day (or hour) for start..end (inclusive)."""
         audit = AuditLog()
-        series, summary, considerations = self._series(audit, lat, lon, start, end, resolution, radius_km, cutoff,
-                                                       min_hours)
+        series, summary, facts = self._series(audit, lat, lon, start, end, resolution, radius_km, cutoff, min_hours)
+        considerations = evaluate(self.rules, facts)
         audit.log(VersionsStep(**self.versions))
         return TimeseriesResponse(location=Location(lat=lat, lon=lon), radius_km=radius_km, resolution=resolution,
                                   unit=UNIT, series=series, summary=summary, considerations=considerations,
@@ -122,8 +138,8 @@ class Pm25Service:
                 radius_km: float = 5.0, cutoff: float = 100.0, min_hours: int = 18) -> CompareResponse:
         """Compare the daily series for start..end with a set of reference levels."""
         audit = AuditLog()
-        series, summary, considerations = self._series(audit, lat, lon, start, end, "day", radius_km, cutoff,
-                                                       min_hours)
+        series, summary, facts = self._series(audit, lat, lon, start, end, "day", radius_km, cutoff, min_hours)
+        considerations = evaluate(self.rules, facts)
         comparisons, level_facts = compare_with_levels(series, self.guidelines[against], (end - start).days + 1)
         for facts in level_facts:
             considerations += evaluate(self.rules, facts, scope="level")
@@ -136,75 +152,82 @@ class Pm25Service:
 
     def weekday(self, lat: float, lon: float, start: Date, end: Date,
                 radius_km: float = 5.0, cutoff: float = 100.0, min_hours: int = 18) -> WeekdayResponse:
-        """Weekday (Mon–Fri) vs. weekend (Sat–Sun) PM2.5 comparison over a date range."""
+        """Weekday (Mon-Fri) vs. weekend (Sat-Sun) PM2.5 comparison over a date range."""
         audit = AuditLog()
-        series, _, limitations = self._series(audit, lat, lon, start, end, "day", radius_km, cutoff, min_hours)
-        wd_vals = [p.pm25 for p in series if Date.fromisoformat(p.time).weekday() < 5]
-        we_vals = [p.pm25 for p in series if Date.fromisoformat(p.time).weekday() >= 5]
+        series, _, facts = self._series(audit, lat, lon, start, end, "day", radius_km, cutoff, min_hours)
+        weekend = [p.pm25 for p in series if Date.fromisoformat(p.time).weekday() >= 5]
+        weekday = [p.pm25 for p in series if Date.fromisoformat(p.time).weekday() < 5]
 
-        def _grp(vals: list[float]) -> WeekdayGroup:
-            return WeekdayGroup(n_days=len(vals),
-                                mean=round(sum(vals) / len(vals), 2) if vals else 0.0,
-                                min=round(min(vals), 2) if vals else 0.0,
-                                max=round(max(vals), 2) if vals else 0.0)
+        def group(vals: list[float]) -> WeekdayGroup:
+            if not vals:
+                return WeekdayGroup(n_days=0, mean=None, min=None, max=None)
+            return WeekdayGroup(n_days=len(vals), mean=round(sum(vals) / len(vals), 2),
+                                min=round(min(vals), 2), max=round(max(vals), 2))
 
-        wd, we = _grp(wd_vals), _grp(we_vals)
-        diff = round(we.mean - wd.mean, 2)
-        audit.log("weekday vs weekend split", weekday_days=wd.n_days, weekend_days=we.n_days,
-                  weekday_mean=wd.mean, weekend_mean=we.mean, difference=diff)
-        audit.log("versions", **self.versions)
+        wd, we = group(weekday), group(weekend)
+        diff = round(we.mean - wd.mean, 2) if wd.mean is not None and we.mean is not None else None
+        audit.log(WeekdaySplitStep(weekday_days=wd.n_days, weekend_days=we.n_days, weekday_mean=wd.mean,
+                                   weekend_mean=we.mean, difference=diff))
+        audit.log(VersionsStep(**self.versions))
+        considerations = evaluate(self.rules, {**facts, "weekday_days": wd.n_days, "weekend_days": we.n_days})
         return WeekdayResponse(location=Location(lat=lat, lon=lon), radius_km=radius_km, unit=UNIT,
-                               weekday=wd, weekend=we, difference=diff,
-                               limitations=limitations, audit=audit.steps)
+                               weekday=wd, weekend=we, difference=diff, considerations=considerations,
+                               limitations=[c.message for c in considerations], audit=audit.steps)
 
     def trend(self, lat: float, lon: float, start: Date, end: Date,
               radius_km: float = 5.0, cutoff: float = 100.0, min_hours: int = 18) -> TrendResponse:
-        """Linear PM2.5 trend (slope µg/m³ per day) over a date range."""
+        """Linear PM2.5 trend (slope ug/m3 per day) over a date range."""
         audit = AuditLog()
-        series, summary, limitations = self._series(audit, lat, lon, start, end, "day", radius_km, cutoff, min_hours)
+        series, summary, facts = self._series(audit, lat, lon, start, end, "day", radius_km, cutoff, min_hours)
         xs = list(range(len(series)))
-        ys = [p.pm25 for p in series]
-        slope = _slope(xs, ys) if len(xs) >= 2 else 0.0
-        direction = "stable" if abs(slope) < 0.05 else ("improving" if slope < 0 else "worsening")
-        audit.log("linear trend", slope_ug_m3_per_day=round(slope, 4), direction=direction, n_points=len(xs))
-        audit.log("versions", **self.versions)
+        slope = _slope(xs, [p.pm25 for p in series]) if len(xs) >= 2 else 0.0
+        direction = ("stable" if abs(slope) < TREND_STABLE_UG_M3_PER_DAY
+                     else "improving" if slope < 0 else "worsening")
+        audit.log(TrendStep(slope_ug_m3_per_day=round(slope, 4), direction=direction,
+                            stable_below=TREND_STABLE_UG_M3_PER_DAY, n_points=len(xs)))
+        audit.log(VersionsStep(**self.versions))
+        considerations = evaluate(self.rules, {**facts, "trend_points": len(xs),
+                                               "trend_stable_below": TREND_STABLE_UG_M3_PER_DAY})
         return TrendResponse(location=Location(lat=lat, lon=lon), radius_km=radius_km, unit=UNIT,
                              slope_ug_m3_per_day=round(slope, 4), direction=direction,
-                             period_mean=summary.mean, n_days=len(xs),
-                             limitations=limitations, audit=audit.steps)
+                             period_mean=summary.mean, n_days=len(xs), considerations=considerations,
+                             limitations=[c.message for c in considerations], audit=audit.steps)
 
     def events(self, lat: float, lon: float, start: Date, end: Date, threshold: float = 15.0,
                radius_km: float = 5.0, cutoff: float = 100.0, min_hours: int = 18) -> EventsResponse:
-        """Days with PM2.5 >= threshold in a date range."""
+        """Days with PM2.5 above a threshold in a date range."""
         audit = AuditLog()
-        series, _, limitations = self._series(audit, lat, lon, start, end, "day", radius_km, cutoff, min_hours)
+        series, _, facts = self._series(audit, lat, lon, start, end, "day", radius_km, cutoff, min_hours)
         event_days = [EventDay(date=p.time, pm25=p.pm25, uncertainty=p.uncertainty, basis=p.basis)
-                      for p in series if p.pm25 >= threshold]
-        share = round(len(event_days) / len(series), 3) if series else 0.0
-        audit.log("events above threshold", threshold=threshold, n_events=len(event_days),
-                  n_days_with_data=len(series), share_above=share)
-        audit.log("versions", **self.versions)
+                      for p in series if p.pm25 > threshold]
+        share = round(len(event_days) / len(series), 3)
+        audit.log(EventsStep(threshold=threshold, n_events=len(event_days), n_days_with_data=len(series),
+                             share_above=share))
+        audit.log(VersionsStep(**self.versions))
+        ambiguous = sum(abs(p.pm25 - threshold) <= p.uncertainty for p in series)
+        considerations = evaluate(self.rules, {**facts, "events_threshold": threshold,
+                                               "events_days_with_data": len(series),
+                                               "events_ambiguous_days": ambiguous})
         return EventsResponse(location=Location(lat=lat, lon=lon), radius_km=radius_km, unit=UNIT,
                               threshold=threshold, events=event_days, n_events=len(event_days),
-                              n_days_with_data=len(series), share_above=share,
-                              limitations=limitations, audit=audit.steps)
+                              n_days_with_data=len(series), share_above=share, considerations=considerations,
+                              limitations=[c.message for c in considerations], audit=audit.steps)
 
     def norms(self) -> GuidelinesNorms:
-        """Frontend-ready norm values derived from the loaded guideline sets (fallback to canonical values)."""
-        DEFAULTS = {"who": 5.0, "eu2030": 10.0, "euNow": 25.0, "who_daily": 15.0}
-        mapping = {
-            ("who", "annual"): "who",
-            ("eu2030", "annual"): "eu2030",
-            ("eu", "annual"): "euNow",
-            ("who", "daily"): "who_daily",
-        }
-        result = dict(DEFAULTS)
-        for set_name, levels in self.guidelines.items():
+        """The levels marked with `norm = "<key>"` in the guidelines file, in the shape the frontend uses."""
+        marked: dict[str, dict] = {}
+        for levels in self.guidelines.values():
             for level in levels:
-                key = mapping.get((set_name, level["type"]))
-                if key:
-                    result[key] = float(level["limit"])
-        return GuidelinesNorms(**result)
+                if "norm" in level:
+                    if level["norm"] in marked:
+                        raise GuidelinesError(f"norm '{level['norm']}' is set on more than one level")
+                    marked[level["norm"]] = level
+        missing = [k for k in ("who", "eu2030", "euNow", "who_daily") if k not in marked]
+        if missing:
+            raise GuidelinesError(f"the guidelines file has no level with norm = {missing}")
+        return GuidelinesNorms(
+            who=marked["who"]["limit"], eu2030=marked["eu2030"]["limit"], euNow=marked["euNow"]["limit"],
+            who_daily=marked["who_daily"]["limit"], verified={k: marked[k]["verified"] for k in marked})
 
     def coverage(self) -> CoverageResponse:
         return self._catalog.coverage(sorted(self.guidelines), self.versions)

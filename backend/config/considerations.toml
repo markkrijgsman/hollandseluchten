@@ -202,3 +202,47 @@ level = "caution"
 origin = "this-api"
 when = [{ fact = "place_candidates", op = ">", value = 1 }]
 message = "'{place_query}' matched {place_candidates} places. The first match, '{place_chosen}', was used; other matches: {place_alternatives}."
+
+# --- weekday / trend / events ---
+
+[[rule]]
+code = "few_weekend_days"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "weekend_days", op = "<", value = 4 }]
+message = "Only {weekend_days} weekend day(s) have data, so the weekend mean says little. Weekday and weekend means are plain means of daily values."
+
+[[rule]]
+code = "few_weekdays"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "weekday_days", op = "<", value = 4 }]
+message = "Only {weekday_days} weekday(s) have data, so the weekday mean says little."
+
+[[rule]]
+code = "trend_is_a_line"
+level = "info"
+origin = "this-api"
+when = [{ fact = "trend_points", op = ">", value = 0 }]
+message = "The trend is a straight line through the daily values, not tested for significance; weather and season can dominate it. A slope below {trend_stable_below:g} ug/m3 per day is called stable (our own choice)."
+
+[[rule]]
+code = "trend_few_points"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "trend_points", op = "<", value = 7 }]
+message = "The trend rests on only {trend_points} day(s); it says very little."
+
+[[rule]]
+code = "events_are_daily_means"
+level = "info"
+origin = "this-api"
+when = [{ fact = "events_threshold", op = ">", value = 0 }]
+message = "An event is a day whose mean is above {events_threshold:g} ug/m3; short peaks within a day are not shown."
+
+[[rule]]
+code = "events_within_uncertainty"
+level = "caution"
+origin = "this-api"
+when = [{ fact = "events_ambiguous_days", op = ">", value = 0 }]
+message = "On {events_ambiguous_days} of {events_days_with_data} days the uncertainty range contains the threshold ({events_threshold:g} ug/m3): it cannot be said whether those days count as events."
