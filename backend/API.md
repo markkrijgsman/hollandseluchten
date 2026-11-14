@@ -83,30 +83,34 @@ The backend reads data and R code from sibling directories. Clone everything int
     └── funs/data_to_tool_fun.R
 ```
 
-```
-cd <parent>
-git clone git@github.com:rivm-syso/Analyse-Together.git
-git clone git@github.com:provincieNH/HackathonHollandseLuchten.git
-git clone git@github.com:markkrijgsman/hollandseluchten.git
-```
-
-Sensor data (`data_sensors.parquet`) is published on Zenodo on the day of the hackathon. It is optional: without it
-the API uses official stations only. Download it anywhere and point `HL_SENSOR_PARQUET` at it.
+Sensor data (`data_sensors.parquet`, about 80 MB) is not in the git repositories. It is published on Zenodo
+(<https://zenodo.org/records/23762846>) and `setup.sh` downloads it into `HackathonHollandseLuchten/data/`, checking size and
+MD5. It is optional: without it the API uses official stations only. Keep a copy elsewhere? Point `HL_SENSOR_PARQUET` at it.
 
 If your layout differs, override the paths with the environment variables below.
 
 ## Setup
 
-Requires Python 3.11+ and R 4.x.
+**With Docker** (nothing else to install): `docker compose up --build` in the repository root starts the API on
+port 8000 and the frontend on port 8080. The backend image contains R and the Analyse-Together functions (cloned when
+the image is built; `--build-arg ANALYSE_TOGETHER_REF=<ref>` picks another branch or commit), and a one-shot
+`data-init` service puts the reference data and the Zenodo sensor data in a volume. See `docker-compose.yml`.
+
+**Without Docker:**
+
+Requires git, Python 3.11+ and R 4.x (`brew install r` on macOS, `sudo apt install r-base` on Debian/Ubuntu).
+One call does the rest:
 
 ```
-brew install r                                          # or another R install
-Rscript -e 'install.packages(c("dplyr", "jsonlite"))'
-
-cd hollandseluchten/backend
-python3 -m venv .venv
-.venv/bin/pip install -e ".[chat,dev]"   # dependencies are declared in pyproject.toml
+git clone https://github.com/markkrijgsman/hollandseluchten.git
+cd hollandseluchten
+./setup.sh            # or: ./setup.sh --ssh (clone with SSH), ./setup.sh --no-sensors (skip the 80 MB download)
 ```
+
+`setup.sh` is safe to run again. It clones Analyse-Together and HackathonHollandseLuchten next to this repo (skipping
+what exists), installs the R packages `dplyr` and `jsonlite`, creates `backend/.venv` with `pip install -e ".[chat,dev]"`
+(dependencies are declared in `pyproject.toml`), checks the data files (downloading the sensor data from Zenodo if it is missing; skip with `--no-sensors`), and finally runs the real R functions through the
+backend as an end-to-end check. It stops with a clear message if R, the Python version or a required data file is missing.
 
 ## Run and test
 

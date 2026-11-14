@@ -1,6 +1,25 @@
 # Hollandse Luchten
 
-## Developer Quick Start
+## Quick start with Docker (no R, Python or git setup needed)
+
+```bash
+docker compose up --build     # first run builds the images and downloads the data (about 150 MB)
+```
+
+Then open http://localhost:8080 (address check), http://localhost:8080/gesprek/ (chat) or http://localhost:8000/docs
+(API). The containers bring their own R, Python and the Analyse-Together R functions; the data is downloaded into a
+Docker volume on the first run. For the chat, put `OPENAI_API_KEY=...` in a `.env` file (see `.env.example`); without
+it everything works except `/chat`, which answers 503. Stop with `docker compose down` (add `-v` to also delete the
+downloaded data).
+
+## Developer Quick Start (without Docker)
+
+Requires git, Python 3.11+ and R. If you don't want to install those, use the Docker route above.
+
+```bash
+./setup.sh      # once: clones the other repos, installs R packages + backend environment, downloads the
+                # sensor data from Zenodo (80 MB; --no-sensors to skip), checks everything works
+```
 
 - **Frontend (Zero-build HTML/CSS/JS)**: See **[frontend/README.md](frontend/README.md)**
   ```bash
@@ -11,7 +30,9 @@
   > **The backend needs R and a clone of [Analyse-Together](https://github.com/rivm-syso/Analyse-Together) next to this
   > repo.** The calculations call the validated R functions from that repo; there is no Python substitute. Without R or
   > the clone, every analysis endpoint answers `503` ("R is not installed" / "Analyse-Together checkout not found").
-  > Setup: see "Required project structure" in [backend/API.md](backend/API.md).
+  > Easiest: `docker compose up --build` (see above). Without Docker, one call sets everything up (clones both repos
+  > next to this one, installs the R packages and the Python environment, downloads and checks the data):
+  > `./setup.sh`. Details: [backend/API.md](backend/API.md).
 - **Live Public Demo**: [https://hollandse-luchten-analyse.web.app/adres.html](https://hollandse-luchten-analyse.web.app/adres.html)
 
 ---

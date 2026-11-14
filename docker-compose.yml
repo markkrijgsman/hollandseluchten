@@ -1,0 +1,47 @@
+# Everything in containers: no R, pip or git needed on your machine.
+#
+#   docker compose up --build        first run: builds the images and downloads the data (about 150 MB)
+#   open http://localhost:8080       address check; the chat is at http://localhost:8080/gesprek/
+#   open http://localhost:8000/docs  the API (Swagger)
+#
+# The chat needs an OpenAI key: put OPENAI_API_KEY=... in a .env file next to this one (see .env.example).
+# Without a key everything works except /chat, which answers 503.
+services:
+  # Runs once and exits: puts the reference data and the Zenodo sensor data in the hl-data volume.
+  data-init:
+    build:
+      context: .
+      dockerfile: docker/data-init.Dockerfile
+    volumes:
+      - hl-data:/data
+    restart: "no"
+
+  backend:
+    build: ./backend
+    depends_on:
+      data-init:
+        condition: service_completed_successfully
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      HL_CHAT_MODEL: ${HL_CHAT_MODEL:-gpt-4o}
+      # HL_DATA_DIR and HL_ANALYSE_TOGETHER_DIR are set in the image
+    volumes:
+      - hl-data:/data:ro
+    ports:
+      - "${HL_API_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  # Static files served as they are; edits in ./frontend show up on reload. The pages find the API at
+  # http://localhost:8000 (override with ?api=...).
+  frontend:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    ports:
+      - "${HL_WEB_PORT:-8080}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  hl-data:

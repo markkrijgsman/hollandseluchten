@@ -25,6 +25,12 @@ Then open either page in your browser:
 The frontend automatically supports **two modes** with zero configuration changes:
 
 ### Mode A: Full Local Backend REST API (`http://localhost:8000`)
+**Easiest: Docker.** From the repository root, `docker compose up --build` starts the backend (with R, the
+Analyse-Together functions and the data) on port 8000 and serves this frontend on http://localhost:8080. Nothing else
+needs to be installed. See the root [`README.md`](../README.md).
+
+Without Docker:
+
 When you also run the FastAPI backend locally on port `8000` (see [`../backend/API.md`](../backend/API.md)). It needs R and a clone of Analyse-Together next to this repo, otherwise the analysis endpoints answer 503 and the frontend falls back to the embedded dataset:
 
 ```bash
