@@ -24,10 +24,12 @@ COPY config ./config
 COPY r ./r
 RUN pip install --no-cache-dir -e ".[chat]"
 
-# The data folder is a volume filled by the data-init service (docker-compose.yml).
+# The data folder: clone reference measurements during build so the container is self-contained in Cloud Run
+RUN mkdir -p /data && git clone --depth 1 https://github.com/provincieNH/HackathonHollandseLuchten.git /data/HackathonHollandseLuchten
+
 ENV HL_ANALYSE_TOGETHER_DIR=/opt/Analyse-Together \
     HL_DATA_DIR=/data/HackathonHollandseLuchten/data
-EXPOSE 8000
+EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s \
-    CMD python -c "import urllib.request as u; u.urlopen('http://localhost:8000/guidelines', timeout=4)"
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    CMD python -c "import os, urllib.request as u; port=os.environ.get('PORT', '8000'); u.urlopen(f'http://localhost:{port}/guidelines', timeout=4)"
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

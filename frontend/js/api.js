@@ -5,16 +5,21 @@
   "use strict";
   const t = (nl, en) => window.I18N.t(nl, en);
 
+  const CLOUD_API_URL = "https://luchtzorg-backend-103343530026.europe-west4.run.app";
+
   function apiBase() {
     const param = new URLSearchParams(window.location.search).get("api");
-    return (param || window.HL_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+    if (param) return param.replace(/\/+$/, "");
+    if (window.HL_API_URL) return window.HL_API_URL.replace(/\/+$/, "");
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return "http://localhost:8000";
+    }
+    return CLOUD_API_URL;
   }
 
-  // Op een gehoste site (geen ?api=, geen HL_API_URL) is er geen backend: snel opgeven.
+  // Live cloud backend is now permanently available across both localhost and hosted domains.
   function isRemoteHost() {
-    const h = window.location.hostname;
-    const hasParam = new URLSearchParams(window.location.search).has("api");
-    return h !== "localhost" && h !== "127.0.0.1" && !hasParam && !window.HL_API_URL;
+    return false;
   }
 
   const qs = (params) =>
