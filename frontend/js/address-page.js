@@ -453,7 +453,7 @@
       }
     }
 
-    const heartSvg = `<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" class="health-heart" focusable="false"><path d="M10 17.5S2 12 2 7a4.5 4.5 0 0 1 8-2.83A4.5 4.5 0 0 1 18 7c0 5-8 10.5-8 10.5z" fill="currentColor"/></svg>`;
+    const heartSvg = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" class="health-heart" focusable="false" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>`;
 
     return `<section class="card health-card" aria-label="${esc(t("Luchtkwaliteit en je gezondheid", "Air Quality & Your Health"))}">
       <div class="health-card-header">
@@ -511,7 +511,7 @@
     const icon = (path) => `<svg viewBox="0 0 48 48" class="icon" aria-hidden="true"><circle cx="24" cy="24" r="20" fill="#EEF4FF"/>${path}<circle cx="38" cy="10" r="3" fill="#F9FF8E" stroke="#202333" stroke-width="1"/></svg>`;
     const today = icon('<path d="M12 26h6l3-8 5 14 3-6h7" fill="none" stroke="#2277FF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>');
     const longTerm = icon('<rect x="14" y="15" width="20" height="19" rx="3" fill="none" stroke="#2277FF" stroke-width="2.4"/><path d="M14 21h20M19 12v5M29 12v5" stroke="#2277FF" stroke-width="2.4" stroke-linecap="round"/>');
-    const act = icon('<path d="M24 35c-7-4-11-8-11-13a5.5 5.5 0 0 1 11-1 5.5 5.5 0 0 1 11 1c0 5-4 9-11 13z" fill="none" stroke="#2277FF" stroke-width="2.4" stroke-linejoin="round"/>');
+    const act = icon('<path d="M13 20h11a3 3 0 1 0-3-3M11 24h19a3 3 0 1 0-3-3M15 28h11a3 3 0 1 1-3 3" fill="none" stroke="#2277FF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>');
     return `<details class="drawer" id="gezondheid">
       <summary>
         <div class="summary-text">

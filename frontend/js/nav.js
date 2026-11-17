@@ -5,10 +5,9 @@
   "use strict";
 
   const logoSvg = (size) => `<svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <path d="M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="1 2"/>
-    <path d="M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
-    <path d="M7 25C10.5 25 13 23.5 16 24.5C18 25.2 19.5 26.5 22 26.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="2 2"/>
+    <path d="M5 13H19.5A3.5 3.5 0 1 0 16 9.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M3 18H28.5A3.5 3.5 0 1 0 25 14.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M7 23H22A3.5 3.5 0 1 1 18.5 26.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
 
   function activeKey() {

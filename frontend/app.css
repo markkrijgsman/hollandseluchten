@@ -358,7 +358,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.78rem; }
 .health-card-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
 .health-card-title { display: flex; align-items: center; gap: 9px; }
 .health-card-title h2 { margin: 0; font-size: 1.12rem; }
-.health-heart { color: #c93434; flex-shrink: 0; }
+.health-heart { color: var(--ok); flex-shrink: 0; }
 .health-period-wrap { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 
 .health-concentration { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 24px; }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="google" content="notranslate">
   <title>LuchtZorg — For People Who Care for Their Air</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36' fill='none'%3E%3Cpath d='M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12' stroke='%23000' stroke-width='2.1' stroke-linecap='round' stroke-dasharray='1 2'/%3E%3Cpath d='M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19' stroke='%23000' stroke-width='2.1' stroke-linecap='round'/%3E%3Cpath d='M7 25C10.5 25 13 23.5 16 24.5C18 25.2 19.5 26.5 22 26.5' stroke='%23000' stroke-width='2.1' stroke-linecap='round' stroke-dasharray='2 2'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36' fill='none'%3E%3Cpath d='M5 13H19.5A3.5 3.5 0 1 0 16 9.5' stroke='%230a0a0a' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M3 18H28.5A3.5 3.5 0 1 0 25 14.5' stroke='%230a0a0a' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M7 23H22A3.5 3.5 0 1 1 18.5 26.5' stroke='%230a0a0a' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
@@ -712,7 +712,7 @@
     #footer-url .back-app:hover { border-color: var(--text); }
 
     /* Mobile & Tablet Responsive Presentation Layout */
-    @media (max-width: 900px) {
+    @media screen and (max-width: 900px) {
       .slide {
         justify-content: flex-start;
         overflow-y: auto;
@@ -848,8 +848,30 @@
       #indicator { font-size: 0.85rem; }
     }
 
-    @media (max-width: 520px) {
+    @media screen and (max-width: 520px) {
       .s3-subgrid { grid-template-columns: 1fr; }
+    }
+
+    @page { size: 13.333in 7.5in; margin: 0; }
+    @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      html, body { height: auto !important; overflow: visible !important; background: #ffffff !important; }
+      #progress, #nav, #footer-url { display: none !important; }
+      #deck { position: static !important; height: auto !important; overflow: visible !important; }
+      .slide {
+        position: relative !important;
+        inset: auto !important;
+        width: 13.333in !important;
+        height: 7.5in !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        transform: none !important;
+        page-break-after: always;
+        break-after: page;
+        padding: 3.2rem 4.8rem !important;
+      }
+      .slide:last-child { page-break-after: auto; break-after: auto; }
     }
   </style>
 </head>
@@ -864,30 +886,22 @@
       <!-- Bigger LuchtZorg Logo -->
       <div style="display: flex; justify-content: center; margin-bottom: 0.65rem;">
         <svg class="s1-logo" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5" 
-                stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12" 
-                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="1 2"/>
-          <path d="M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19" 
-                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round"/>
-          <path d="M7 25C10.5 25 13 23.5 16 24.5C18 25.2 19.5 26.5 22 26.5" 
-                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="2 2"/>
+          <path d="M5 13H19.5A3.5 3.5 0 1 0 16 9.5" stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 18H28.5A3.5 3.5 0 1 0 25 14.5" stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7 23H22A3.5 3.5 0 1 1 18.5 26.5" stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
       <h1 class="s-title-xl" translate="no">LuchtZorg</h1>
       <p class="s-sub-xl">For people who care for their air</p>
 
       <div class="grid-3" style="text-align: left;">
-        <!-- 1. Your Health (Hand-Heart Gesture) -->
+        <!-- 1. Your Health (Respiratory Vitality & Clean Air) -->
         <div class="card">
           <div class="card-icon-box" aria-hidden="true">
-            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M5 25C7 22 8.5 19 9 17C7.5 16 6.5 14 7 12C7.5 10 9.5 9 11.5 9.5C13.5 10 15 12 16 13.5" stroke="var(--text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M27 25C25 22 23.5 19 23 17C24.5 16 25.5 14 25 12C24.5 10 22.5 9 20.5 9.5C18.5 10 17 12 16 13.5" stroke="var(--text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M10.5 19C12 21 14 22.5 16 23C18 22.5 20 21 21.5 19" stroke="var(--text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M8.5 13C10.5 13.5 12.5 15 14 16.5" stroke="var(--text)" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M23.5 13C21.5 13.5 19.5 15 18 16.5" stroke="var(--text)" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M16 15C15 13 13 12 11.5 13C10 14 10.5 16 12 17.5L16 21L20 17.5C21.5 16 22 14 20.5 13C19 12 17 13 16 15Z" fill="var(--text)" fill-opacity="0.12" stroke="var(--text)" stroke-width="1.6" stroke-linejoin="round"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v9"/>
+              <path d="M12 9c-2-2-5-2.5-7 0-2 2.5-2.5 7.5-1 10 1 1.5 3.5 1.5 5 0 1-1 1.5-3 1.5-5"/>
+              <path d="M12 9c2-2 5-2.5 7 0 2 2.5 2.5 7.5 1 10-1 1.5-3.5 1.5-5 0-1-1-1.5-3-1.5-5"/>
             </svg>
           </div>
           <h2>Your Health</h2>
@@ -936,14 +950,9 @@
       <!-- LuchtZorg Logo -->
       <div style="display: flex; justify-content: center; margin-bottom: 0.5rem;">
         <svg class="s2-logo" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5" 
-                stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12" 
-                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="1 2"/>
-          <path d="M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19" 
-                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round"/>
-          <path d="M7 25C10.5 25 13 23.5 16 24.5C18 25.2 19.5 26.5 22 26.5" 
-                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="2 2"/>
+          <path d="M5 13H19.5A3.5 3.5 0 1 0 16 9.5" stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 18H28.5A3.5 3.5 0 1 0 25 14.5" stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7 23H22A3.5 3.5 0 1 1 18.5 26.5" stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
       <h1 class="s-title-lg" translate="no">LuchtZorg</h1>
@@ -1003,11 +1012,11 @@
           </div>
 
           <!-- HERO WINNER: ★ LuchtZorg (Top-Right) -->
-          <div class="s2-pill s2-pill--hero" onclick="window.open('https://luchtzorg.web.app/adres.html', '_blank')">
+          <div class="s2-pill s2-pill--hero" onclick="window.open('https://luchtzorg.web.app/', '_blank')">
             <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="1 2"/>
-              <path d="M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round"/>
+              <path d="M5 13H19.5A3.5 3.5 0 1 0 16 9.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M3 18H28.5A3.5 3.5 0 1 0 25 14.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M7 23H22A3.5 3.5 0 1 1 18.5 26.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <span translate="no">LuchtZorg</span>
           </div>
@@ -1064,9 +1073,9 @@
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
             <div style="display: flex; align-items: center; gap: 0.55rem;">
               <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 26px; height: 26px; flex-shrink: 0;" aria-hidden="true">
-                <path d="M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="1 2"/>
-                <path d="M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round"/>
+                <path d="M5 13H19.5A3.5 3.5 0 1 0 16 9.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M3 18H28.5A3.5 3.5 0 1 0 25 14.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M7 23H22A3.5 3.5 0 1 1 18.5 26.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #ffffff;" translate="no">LuchtZorg Platform</h3>
             </div>
@@ -1177,14 +1186,9 @@
       <!-- LuchtZorg Logo -->
       <div style="display: flex; justify-content: center; margin-bottom: 0.65rem;">
         <svg class="s4-logo" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5" 
-                stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12" 
-                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="1 2"/>
-          <path d="M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19" 
-                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round"/>
-          <path d="M7 25C10.5 25 13 23.5 16 24.5C18 25.2 19.5 26.5 22 26.5" 
-                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="2 2"/>
+          <path d="M5 13H19.5A3.5 3.5 0 1 0 16 9.5" stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 18H28.5A3.5 3.5 0 1 0 25 14.5" stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7 23H22A3.5 3.5 0 1 1 18.5 26.5" stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
 
@@ -1194,7 +1198,7 @@
 
       <!-- QR Code Container -->
       <div style="display: flex; justify-content: center; margin-bottom: 1.25rem;">
-        <div style="background: #ffffff; padding: 14px; border-radius: 1.25rem; border: 2px solid var(--card-border); box-shadow: 0 8px 30px rgba(0,0,0,0.06); cursor: pointer;" onclick="window.open('https://luchtzorg.web.app/adres.html', '_blank')">
+        <div style="background: #ffffff; padding: 14px; border-radius: 1.25rem; border: 2px solid var(--card-border); box-shadow: 0 8px 30px rgba(0,0,0,0.06); cursor: pointer;" onclick="window.open('https://luchtzorg.web.app/', '_blank')">
           <img class="s4-qr-img" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmVyc2lvbj0iMS4xIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDI5IDI5Ij4KCTwhLS0gQ3JlYXRlZCB3aXRoIGh0dHBzOi8vYXBpLnFyc2VydmVyLmNvbSAoUVIgQ29kZSBBUEksIHNlZSBnb1FSLm1lL2FwaSBmb3IgaW5mb3JtYXRpb24pIC0tPgoJPHRpdGxlPlFSIENvZGU8L3RpdGxlPgoJPGRlc2M+aHR0cHM6Ly9sdWNodHpvcmcud2ViLmFwcC9hZHJlcy5odG1sPC9kZXNjPgoJPHJlY3Qgc3R5bGU9ImZpbGw6cmdiKDI1NSwgMjU1LCAyNTUpO2ZpbGwtb3BhY2l0eToxIiB4PSIwIiB5PSIwIiB3aWR0aD0iMjkiIGhlaWdodD0iMjkiIC8+Cgk8ZyBpZD0iZWxlbWVudHMiPgoJCTxwYXRoIHN0eWxlPSJmaWxsOnJnYigwLCAwLCAwKSIgZD0iTSAwLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDEsMCBsIDEsMCAwLDEgLTEsMCB6IE0gMiwwIGwgMSwwIDAsMSAtMSwwIHogTSAzLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDQsMCBsIDEsMCAwLDEgLTEsMCB6IE0gNSwwIGwgMSwwIDAsMSAtMSwwIHogTSA2LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDEzLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDIwLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMSBsIDEsMCAwLDEgLTEsMCB6IE0gNiwxIGwgMSwwIDAsMSAtMSwwIHogTSA4LDEgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDEgbCAxLDAgMCwxIC0xLDAgeiBNIDEzLDEgbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDEgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDEgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDEgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDEgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDEgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMiBsIDEsMCAwLDEgLTEsMCB6IE0gMiwyIGwgMSwwIDAsMSAtMSwwIHogTSAzLDIgbCAxLDAgMCwxIC0xLDAgeiBNIDQsMiBsIDEsMCAwLDEgLTEsMCB6IE0gNiwyIGwgMSwwIDAsMSAtMSwwIHogTSAxMiwyIGwgMSwwIDAsMSAtMSwwIHogTSAxMywyIGwgMSwwIDAsMSAtMSwwIHogTSAxNSwyIGwgMSwwIDAsMSAtMSwwIHogTSAxNiwyIGwgMSwwIDAsMSAtMSwwIHogTSAxOSwyIGwgMSwwIDAsMSAtMSwwIHogTSAyMCwyIGwgMSwwIDAsMSAtMSwwIHogTSAyMiwyIGwgMSwwIDAsMSAtMSwwIHogTSAyNCwyIGwgMSwwIDAsMSAtMSwwIHogTSAyNSwyIGwgMSwwIDAsMSAtMSwwIHogTSAyNiwyIGwgMSwwIDAsMSAtMSwwIHogTSAyOCwyIGwgMSwwIDAsMSAtMSwwIHogTSAwLDMgbCAxLDAgMCwxIC0xLDAgeiBNIDIsMyBsIDEsMCAwLDEgLTEsMCB6IE0gMywzIGwgMSwwIDAsMSAtMSwwIHogTSA0LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDYsMyBsIDEsMCAwLDEgLTEsMCB6IE0gOCwzIGwgMSwwIDAsMSAtMSwwIHogTSA5LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDMgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDMgbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDE3LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDMgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDAsNCBsIDEsMCAwLDEgLTEsMCB6IE0gMiw0IGwgMSwwIDAsMSAtMSwwIHogTSAzLDQgbCAxLDAgMCwxIC0xLDAgeiBNIDQsNCBsIDEsMCAwLDEgLTEsMCB6IE0gNiw0IGwgMSwwIDAsMSAtMSwwIHogTSA5LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDQgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDAsNSBsIDEsMCAwLDEgLTEsMCB6IE0gNiw1IGwgMSwwIDAsMSAtMSwwIHogTSA4LDUgbCAxLDAgMCwxIC0xLDAgeiBNIDksNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTEsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTIsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTYsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTgsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjIsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjgsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMCw2IGwgMSwwIDAsMSAtMSwwIHogTSAxLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDIsNiBsIDEsMCAwLDEgLTEsMCB6IE0gMyw2IGwgMSwwIDAsMSAtMSwwIHogTSA0LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDUsNiBsIDEsMCAwLDEgLTEsMCB6IE0gNiw2IGwgMSwwIDAsMSAtMSwwIHogTSA4LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDIwLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDksNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTAsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTEsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTQsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTYsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTgsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTksNyBsIDEsMCAwLDEgLTEsMCB6IE0gMCw4IGwgMSwwIDAsMSAtMSwwIHogTSAxLDggbCAxLDAgMCwxIC0xLDAgeiBNIDIsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMyw4IGwgMSwwIDAsMSAtMSwwIHogTSA0LDggbCAxLDAgMCwxIC0xLDAgeiBNIDYsOCBsIDEsMCAwLDEgLTEsMCB6IE0gNyw4IGwgMSwwIDAsMSAtMSwwIHogTSA4LDggbCAxLDAgMCwxIC0xLDAgeiBNIDksOCBsIDEsMCAwLDEgLTEsMCB6IE0gMTEsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMTcsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjEsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjMsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjUsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjcsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMCw5IGwgMSwwIDAsMSAtMSwwIHogTSAxLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDQsOSBsIDEsMCAwLDEgLTEsMCB6IE0gNSw5IGwgMSwwIDAsMSAtMSwwIHogTSA3LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDEzLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDIwLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMTAgbCAxLDAgMCwxIC0xLDAgeiBNIDYsMTAgbCAxLDAgMCwxIC0xLDAgeiBNIDcsMTAgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDEwIGwgMSwwIDAsMSAtMSwwIHogTSAxMywxMCBsIDEsMCAwLDEgLTEsMCB6IE0gMTQsMTAgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDEwIGwgMSwwIDAsMSAtMSwwIHogTSAxOCwxMCBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMTAgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDEwIGwgMSwwIDAsMSAtMSwwIHogTSAxLDExIGwgMSwwIDAsMSAtMSwwIHogTSAyLDExIGwgMSwwIDAsMSAtMSwwIHogTSA0LDExIGwgMSwwIDAsMSAtMSwwIHogTSA4LDExIGwgMSwwIDAsMSAtMSwwIHogTSAxMiwxMSBsIDEsMCAwLDEgLTEsMCB6IE0gMTMsMTEgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDExIGwgMSwwIDAsMSAtMSwwIHogTSAxNiwxMSBsIDEsMCAwLDEgLTEsMCB6IE0gMTgsMTEgbCAxLDAgMCwxIC0xLDAgeiBNIDIwLDExIGwgMSwwIDAsMSAtMSwwIHogTSAyMSwxMSBsIDEsMCAwLDEgLTEsMCB6IE0gMjUsMTEgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDExIGwgMSwwIDAsMSAtMSwwIHogTSAyLDEyIGwgMSwwIDAsMSAtMSwwIHogTSAzLDEyIGwgMSwwIDAsMSAtMSwwIHogTSA2LDEyIGwgMSwwIDAsMSAtMSwwIHogTSA3LDEyIGwgMSwwIDAsMSAtMSwwIHogTSA5LDEyIGwgMSwwIDAsMSAtMSwwIHogTSAxMCwxMiBsIDEsMCAwLDEgLTEsMCB6IE0gMTIsMTIgbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDEyIGwgMSwwIDAsMSAtMSwwIHogTSAxNSwxMiBsIDEsMCAwLDEgLTEsMCB6IE0gMTYsMTIgbCAxLDAgMCwxIC0xLDAgeiBNIDE3LDEyIGwgMSwwIDAsMSAtMSwwIHogTSAxOCwxMiBsIDEsMCAwLDEgLTEsMCB6IE0gMjUsMTIgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDEyIGwgMSwwIDAsMSAtMSwwIHogTSAwLDEzIGwgMSwwIDAsMSAtMSwwIHogTSAxLDEzIGwgMSwwIDAsMSAtMSwwIHogTSA1LDEzIGwgMSwwIDAsMSAtMSwwIHogTSA5LDEzIGwgMSwwIDAsMSAtMSwwIHogTSAxNiwxMyBsIDEsMCAwLDEgLTEsMCB6IE0gMTcsMTMgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDEzIGwgMSwwIDAsMSAtMSwwIHogTSAxOSwxMyBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMTMgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDEzIGwgMSwwIDAsMSAtMSwwIHogTSAyMywxMyBsIDEsMCAwLDEgLTEsMCB6IE0gMjQsMTMgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDEzIGwgMSwwIDAsMSAtMSwwIHogTSAwLDE0IGwgMSwwIDAsMSAtMSwwIHogTSA0LDE0IGwgMSwwIDAsMSAtMSwwIHogTSA1LDE0IGwgMSwwIDAsMSAtMSwwIHogTSA2LDE0IGwgMSwwIDAsMSAtMSwwIHogTSAxMSwxNCBsIDEsMCAwLDEgLTEsMCB6IE0gMTIsMTQgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDE0IGwgMSwwIDAsMSAtMSwwIHogTSAxNywxNCBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMTQgbCAxLDAgMCwxIC0xLDAgeiBNIDIxLDE0IGwgMSwwIDAsMSAtMSwwIHogTSAyMiwxNCBsIDEsMCAwLDEgLTEsMCB6IE0gMjMsMTQgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDE0IGwgMSwwIDAsMSAtMSwwIHogTSAyNiwxNCBsIDEsMCAwLDEgLTEsMCB6IE0gMiwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gMywxNSBsIDEsMCAwLDEgLTEsMCB6IE0gNCwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gNSwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gNywxNSBsIDEsMCAwLDEgLTEsMCB6IE0gOCwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTAsMTUgbCAxLDAgMCwxIC0xLDAgeiBNIDExLDE1IGwgMSwwIDAsMSAtMSwwIHogTSAxNCwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsMTUgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDE1IGwgMSwwIDAsMSAtMSwwIHogTSAyMCwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjEsMTUgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDE1IGwgMSwwIDAsMSAtMSwwIHogTSAyNCwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjcsMTUgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDEsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDQsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDUsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDYsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDExLDE2IGwgMSwwIDAsMSAtMSwwIHogTSAxNywxNiBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDE2IGwgMSwwIDAsMSAtMSwwIHogTSAyNiwxNiBsIDEsMCAwLDEgLTEsMCB6IE0gMCwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMSwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gNywxNyBsIDEsMCAwLDEgLTEsMCB6IE0gOCwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gOSwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTIsMTcgbCAxLDAgMCwxIC0xLDAgeiBNIDEzLDE3IGwgMSwwIDAsMSAtMSwwIHogTSAxNCwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTYsMTcgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDE3IGwgMSwwIDAsMSAtMSwwIHogTSAxOSwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMTcgbCAxLDAgMCwxIC0xLDAgeiBNIDIxLDE3IGwgMSwwIDAsMSAtMSwwIHogTSAyMiwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMjMsMTcgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDE3IGwgMSwwIDAsMSAtMSwwIHogTSAyNiwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMjgsMTcgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDIsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDUsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDYsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDcsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDgsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDE4IGwgMSwwIDAsMSAtMSwwIHogTSAxMywxOCBsIDEsMCAwLDEgLTEsMCB6IE0gMTQsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDE4IGwgMSwwIDAsMSAtMSwwIHogTSAxOCwxOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjIsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDE4IGwgMSwwIDAsMSAtMSwwIHogTSAyNCwxOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjYsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDAsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDIsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDMsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDgsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDE5IGwgMSwwIDAsMSAtMSwwIHogTSAxMywxOSBsIDEsMCAwLDEgLTEsMCB6IE0gMTYsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDE5IGwgMSwwIDAsMSAtMSwwIHogTSAyMCwxOSBsIDEsMCAwLDEgLTEsMCB6IE0gMjIsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDE5IGwgMSwwIDAsMSAtMSwwIHogTSAyNCwxOSBsIDEsMCAwLDEgLTEsMCB6IE0gMjcsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDYsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDksMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDIwIGwgMSwwIDAsMSAtMSwwIHogTSAxNCwyMCBsIDEsMCAwLDEgLTEsMCB6IE0gMTcsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDIwIGwgMSwwIDAsMSAtMSwwIHogTSAyMCwyMCBsIDEsMCAwLDEgLTEsMCB6IE0gMjEsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDIwIGwgMSwwIDAsMSAtMSwwIHogTSAyMywyMCBsIDEsMCAwLDEgLTEsMCB6IE0gMjQsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDIwIGwgMSwwIDAsMSAtMSwwIHogTSAyNywyMCBsIDEsMCAwLDEgLTEsMCB6IE0gMjgsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDgsMjEgbCAxLDAgMCwxIC0xLDAgeiBNIDksMjEgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDIxIGwgMSwwIDAsMSAtMSwwIHogTSAxOCwyMSBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMjEgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDIxIGwgMSwwIDAsMSAtMSwwIHogTSAyNSwyMSBsIDEsMCAwLDEgLTEsMCB6IE0gMjYsMjEgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDIxIGwgMSwwIDAsMSAtMSwwIHogTSAyOCwyMSBsIDEsMCAwLDEgLTEsMCB6IE0gMCwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMSwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMiwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMywyMiBsIDEsMCAwLDEgLTEsMCB6IE0gNCwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gNSwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gNiwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gOCwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMTAsMjIgbCAxLDAgMCwxIC0xLDAgeiBNIDExLDIyIGwgMSwwIDAsMSAtMSwwIHogTSAxMiwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsMjIgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDIyIGwgMSwwIDAsMSAtMSwwIHogTSAxOSwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMjIgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDIyIGwgMSwwIDAsMSAtMSwwIHogTSAyNCwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMjUsMjIgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDIyIGwgMSwwIDAsMSAtMSwwIHogTSAwLDIzIGwgMSwwIDAsMSAtMSwwIHogTSA2LDIzIGwgMSwwIDAsMSAtMSwwIHogTSAxMSwyMyBsIDEsMCAwLDEgLTEsMCB6IE0gMTQsMjMgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDIzIGwgMSwwIDAsMSAtMSwwIHogTSAyMCwyMyBsIDEsMCAwLDEgLTEsMCB6IE0gMjQsMjMgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDIzIGwgMSwwIDAsMSAtMSwwIHogTSAwLDI0IGwgMSwwIDAsMSAtMSwwIHogTSAyLDI0IGwgMSwwIDAsMSAtMSwwIHogTSAzLDI0IGwgMSwwIDAsMSAtMSwwIHogTSA0LDI0IGwgMSwwIDAsMSAtMSwwIHogTSA2LDI0IGwgMSwwIDAsMSAtMSwwIHogTSA4LDI0IGwgMSwwIDAsMSAtMSwwIHogTSAxMSwyNCBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsMjQgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDI0IGwgMSwwIDAsMSAtMSwwIHogTSAxNywyNCBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMjQgbCAxLDAgMCwxIC0xLDAgeiBNIDIxLDI0IGwgMSwwIDAsMSAtMSwwIHogTSAyMiwyNCBsIDEsMCAwLDEgLTEsMCB6IE0gMjMsMjQgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDI0IGwgMSwwIDAsMSAtMSwwIHogTSAyNiwyNCBsIDEsMCAwLDEgLTEsMCB6IE0gMCwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMiwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMywyNSBsIDEsMCAwLDEgLTEsMCB6IE0gNCwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gNiwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gOCwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTAsMjUgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDI1IGwgMSwwIDAsMSAtMSwwIHogTSAxMywyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTQsMjUgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDI1IGwgMSwwIDAsMSAtMSwwIHogTSAxOSwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMjUgbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDI1IGwgMSwwIDAsMSAtMSwwIHogTSAyNSwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjYsMjUgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDI1IGwgMSwwIDAsMSAtMSwwIHogTSAyOCwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMCwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMiwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMywyNiBsIDEsMCAwLDEgLTEsMCB6IE0gNCwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gNiwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gOCwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gOSwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMTAsMjYgbCAxLDAgMCwxIC0xLDAgeiBNIDEzLDI2IGwgMSwwIDAsMSAtMSwwIHogTSAxNCwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsMjYgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDI2IGwgMSwwIDAsMSAtMSwwIHogTSAxNywyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMTgsMjYgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDI2IGwgMSwwIDAsMSAtMSwwIHogTSAyMiwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMjMsMjYgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDI2IGwgMSwwIDAsMSAtMSwwIHogTSAyNSwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMjYsMjYgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDI2IGwgMSwwIDAsMSAtMSwwIHogTSAwLDI3IGwgMSwwIDAsMSAtMSwwIHogTSA2LDI3IGwgMSwwIDAsMSAtMSwwIHogTSA4LDI3IGwgMSwwIDAsMSAtMSwwIHogTSAxMiwyNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTMsMjcgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDI3IGwgMSwwIDAsMSAtMSwwIHogTSAxNiwyNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTgsMjcgbCAxLDAgMCwxIC0xLDAgeiBNIDIwLDI3IGwgMSwwIDAsMSAtMSwwIHogTSAyMSwyNyBsIDEsMCAwLDEgLTEsMCB6IE0gMjQsMjcgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDI3IGwgMSwwIDAsMSAtMSwwIHogTSAyNywyNyBsIDEsMCAwLDEgLTEsMCB6IE0gMCwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMSwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMiwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMywyOCBsIDEsMCAwLDEgLTEsMCB6IE0gNCwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gNSwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gNiwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gOCwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMTIsMjggbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDI4IGwgMSwwIDAsMSAtMSwwIHogTSAxNSwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMTcsMjggbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDI4IGwgMSwwIDAsMSAtMSwwIHogTSAyMSwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjIsMjggbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDI4IGwgMSwwIDAsMSAtMSwwIHogTSAyNiwyOCBsIDEsMCAwLDEgLTEsMCB6ICIgLz4KCTwvZz4KPC9zdmc+Cg==" alt="Scan QR Code to launch LuchtZorg" />
         </div>
       </div>
