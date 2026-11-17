@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LuchtZorg — For People Who Care for Their Air</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card-bg: #ffffff;
+      --card-border: #e5e5e5;
+      --card-border-hover: #000000;
+      --text: #000000;
+      --text-muted: #525252;
+      --text-dim: #8a8a8a;
+      --btn-bg: #000000;
+      --btn-text: #ffffff;
+      --pill-bg: #f5f5f5;
+      --pill-border: #e0e0e0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: text;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: scale(0.98);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 4.5rem 6.5rem;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.3rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+      width: fit-content;
+      background: var(--pill-bg);
+      border: 1px solid var(--pill-border);
+      color: var(--text);
+    }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 3.3rem;
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      margin-bottom: 2rem;
+      color: var(--text);
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.75rem;
+      width: 100%;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1.25rem;
+      padding: 2rem 1.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      transition: all 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: var(--card-border-hover);
+      transform: translateY(-3px);
+    }
+
+    .card.interactive {
+      border: 2px solid var(--text);
+      cursor: pointer;
+    }
+
+    .card.interactive:hover {
+      background: var(--pill-bg);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+    }
+
+    .card-icon-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.4rem;
+      background: var(--pill-bg);
+      border: 1px solid var(--pill-border);
+      color: var(--text);
+      transition: all 0.2s ease;
+    }
+
+    .card-icon-box svg {
+      width: 26px;
+      height: 26px;
+      stroke: var(--text);
+    }
+
+    .card:hover .card-icon-box {
+      transform: scale(1.06);
+      border-color: var(--card-border-hover);
+    }
+
+    .card h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.55rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .card .subtext {
+      font-size: 0.82rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .card p {
+      font-size: 1.02rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .demo-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      padding: 0.45rem 1.15rem;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      width: fit-content;
+      margin-top: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    /* 2x2 Market Fitness Matrix (Slide 2) */
+    .market-split-layout {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1.75rem;
+      align-items: stretch;
+      width: 100%;
+      max-width: 1350px;
+      margin: 0 auto;
+    }
+
+    .matrix-wrapper {
+      position: relative;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1.25rem;
+      padding: 1.25rem 1.75rem 1.25rem 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .matrix-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 0.5rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .matrix-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .matrix-subtitle {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .matrix-plot-area {
+      position: relative;
+      width: 100%;
+      height: 310px;
+      margin: 0.4rem 0;
+    }
+
+    .matrix-axis-x {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      border-top: 1px dashed var(--card-border);
+    }
+
+    .matrix-axis-y {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      border-left: 1px dashed var(--card-border);
+    }
+
+    .quadrant-highlight {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 50%;
+      height: 50%;
+      background: var(--pill-bg);
+      border-radius: 0 0.85rem 0 0;
+      border-top: 2px solid var(--text);
+      border-right: 2px solid var(--text);
+      pointer-events: none;
+    }
+
+    .quadrant-label {
+      position: absolute;
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+    .quadrant-label.tl { top: 0.4rem; left: 0.4rem; }
+    .quadrant-label.bl { bottom: 0.4rem; left: 0.4rem; }
+    .quadrant-label.br { bottom: 0.4rem; right: 0.4rem; text-align: right; }
+    .quadrant-label.tr { top: 0.4rem; right: 0.4rem; text-align: right; color: var(--text); }
+
+    .axis-label-y-top {
+      position: absolute;
+      top: -0.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      background: var(--bg);
+      padding: 0.1rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid var(--card-border);
+    }
+
+    .axis-label-y-bottom {
+      position: absolute;
+      bottom: -0.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      white-space: nowrap;
+      background: var(--bg);
+      padding: 0.1rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid var(--card-border);
+    }
+
+    .axis-label-x-left {
+      position: absolute;
+      top: 50%;
+      left: 0.2rem;
+      transform: translateY(-50%);
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      background: var(--bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      border: 1px solid var(--card-border);
+    }
+
+    .axis-label-x-right {
+      position: absolute;
+      top: 50%;
+      right: 0.2rem;
+      transform: translateY(-50%);
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: var(--text);
+      text-transform: uppercase;
+      background: var(--bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      border: 1px solid var(--card-border);
+    }
+
+    .plot-item {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      padding: 0.4rem 0.65rem;
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: all 0.2s ease;
+      cursor: default;
+      white-space: nowrap;
+    }
+
+    .plot-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .plot-item.competitor {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    .plot-item.competitor strong {
+      font-size: 0.82rem;
+      color: var(--text);
+      display: block;
+      line-height: 1.15;
+    }
+    .plot-item.competitor span {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    .plot-item.hero-winner {
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: 2px solid var(--btn-bg);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      padding: 0.55rem 0.9rem;
+      border-radius: 0.85rem;
+      z-index: 20;
+    }
+    .plot-item.hero-winner strong {
+      font-size: 0.92rem;
+      color: var(--btn-text);
+      display: block;
+      line-height: 1.15;
+    }
+    .plot-item.hero-winner span {
+      font-size: 0.7rem;
+      color: var(--btn-text);
+      opacity: 0.85;
+      display: block;
+      font-weight: 700;
+    }
+
+    .matrix-footer {
+      border-top: 1px solid var(--card-border);
+      padding-top: 0.5rem;
+      margin-top: 0.4rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .matrix-takeaways {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      height: 100%;
+      justify-content: space-between;
+    }
+
+    .take-card {
+      padding: 1.1rem 1.35rem;
+      border-radius: 1.15rem;
+      gap: 0.3rem;
+    }
+    .take-card h2 {
+      font-size: 1.22rem;
+    }
+    .take-card p {
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+
+    /* Architecture Visual Blocks (Slide 3) */
+    .arch-diagram-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.95rem;
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .arch-tier {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1.15rem;
+      padding: 1.05rem 1.5rem;
+      position: relative;
+    }
+
+    .arch-tier-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.65rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .arch-tier-title span {
+      background: var(--pill-bg);
+      border: 1px solid var(--pill-border);
+      padding: 0.15rem 0.55rem;
+      border-radius: 4px;
+      color: var(--text);
+    }
+
+    .arch-row {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 1.25rem;
+    }
+
+    .arch-node {
+      background: var(--bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.85rem;
+      padding: 0.8rem 1.2rem;
+      text-align: center;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+
+    .arch-node:hover {
+      border-color: var(--card-border-hover);
+    }
+
+    .arch-node strong {
+      font-size: 1.02rem;
+      color: var(--text);
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .arch-node span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .arch-node.highlight-node {
+      border-top: 2px solid var(--text);
+    }
+
+    .arch-connectors {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 0.1rem 2rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-family: monospace;
+      font-weight: 700;
+    }
+
+    .connector-badge {
+      background: var(--pill-bg);
+      border: 1px solid var(--pill-border);
+      color: var(--text);
+      padding: 0.2rem 0.8rem;
+      border-radius: 9999px;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .func-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.45rem;
+      width: 100%;
+    }
+
+    .func-pill {
+      background: var(--bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.5rem;
+      padding: 0.4rem 0.3rem;
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .arch-truth-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.85rem;
+      width: 100%;
+    }
+
+    .arch-bottom-banner {
+      background: var(--pill-bg);
+      border: 1px solid var(--pill-border);
+      border-radius: 0.75rem;
+      padding: 0.6rem 1.25rem;
+      text-align: center;
+      font-size: 0.88rem;
+      color: var(--text);
+      font-weight: 600;
+      margin-top: 0.35rem;
+    }
+
+    
+    /* Footer URL (Bottom Left opposite Nav) */
+    #footer-url {
+      position: fixed;
+      bottom: 2.25rem;
+      left: 3rem;
+      display: flex;
+      align-items: center;
+      z-index: 9999;
+      pointer-events: auto;
+    }
+
+    #footer-url a {
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      letter-spacing: 0.02em;
+      transition: color 0.2s ease;
+    }
+
+    #footer-url a:hover {
+      color: var(--text);
+    }
+
+/* Nav */
+    #nav {
+      position: fixed;
+      bottom: 2.25rem;
+      right: 3rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      z-index: 9999;
+      pointer-events: auto;
+    }
+
+    .nav-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.15rem;
+      transition: all 0.2s ease;
+      outline: none;
+      user-select: none;
+    }
+
+    .nav-btn:hover {
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border-color: var(--btn-bg);
+      transform: scale(1.06);
+    }
+
+    #indicator {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    #progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: var(--text);
+      width: 20%;
+      transition: width 0.3s ease;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="progress"></div>
+
+  <div id="deck">
+
+    <!-- SLIDE 1: VALUE PROPOSITION -->
+    <div class="slide active" data-slide="1" style="text-align: center;">
+      <!-- Bigger LuchtZorg Logo -->
+      <div style="display: flex; justify-content: center; margin-bottom: 0.65rem;">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 88px; height: 88px;">
+          <path d="M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5" 
+                stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12" 
+                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="1 2"/>
+          <path d="M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19" 
+                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round"/>
+          <path d="M7 25C10.5 25 13 23.5 16 24.5C18 25.2 19.5 26.5 22 26.5" 
+                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="2 2"/>
+        </svg>
+      </div>
+      <h1 style="font-size: 3.8rem; margin-bottom: 0.35rem; letter-spacing: -0.02em;">LuchtZorg</h1>
+      <p style="font-size: 1.4rem; color: var(--text-muted); margin-bottom: 2.25rem; font-weight: 700; letter-spacing: -0.01em;">For people who care for their air</p>
+
+      <div class="grid-3" style="text-align: left;">
+        <!-- 1. Your Health (Hand-Heart Gesture) -->
+        <div class="card">
+          <div class="card-icon-box" style="font-size: 1.65rem; line-height: 1;">
+            <span>🫶</span>
+          </div>
+          <h2>Your Health</h2>
+          <span class="subtext">Visible • Accessible • Actionable</span>
+          <p>Instant location-based air quality wherever you are — at home, at work, or choosing a cleaner cycling route.</p>
+        </div>
+
+        <!-- 2. Your Choices (Empowerment without preaching) -->
+        <div class="card">
+          <div class="card-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20"/>
+              <path d="M12 5h7l2.5 2.5-2.5 2.5H12"/>
+              <path d="M12 13H5l-2.5 2.5 2.5 2.5H12"/>
+            </svg>
+          </div>
+          <h2>Your Choices</h2>
+          <span class="subtext">Informed Daily Habits</span>
+          <p>Actionable insights on your own terms: navigate cleaner cycling routes, time outdoor exercise, and take charge of your personal exposure.</p>
+        </div>
+
+        <!-- 3. Your Questions (Human + AI Dialogue & Citizen Empowerment) -->
+        <div class="card">
+          <div class="card-icon-box">
+            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M27 15C27 20.52 22.08 25 16 25C14.2 25 12.5 24.6 11 23.9L5 26L6.8 20.8C4.5 19.2 3 16.7 3 15C3 9.48 7.92 5 14 5" stroke="var(--text)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M21 7L22.5 10.5L26 12L22.5 13.5L21 17L19.5 13.5L16 12L19.5 10.5L21 7Z" fill="var(--text)"/>
+              <circle cx="9" cy="15" r="1.3" fill="var(--text)"/>
+              <circle cx="14" cy="15" r="1.3" fill="var(--text)"/>
+            </svg>
+          </div>
+          <h2>Your Questions</h2>
+          <span class="subtext">Human + AI Dialogue</span>
+          <p>Empowering you to navigate sensor data yourself. Ask sharp questions, uncover local patterns, and spark informed conversations with neighbors and City Hall.</p>
+        </div>
+      </div>
+
+      <!-- Challenge 3 beneath the three pillars -->
+      <div style="display: flex; justify-content: center; margin-top: 2.25rem;">
+        <div class="tag" style="margin-bottom: 0;">🏆 Challenge 3: Helping Residents Analyse Data More Easily</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: THE 2-AXIS MARKET GRID -->
+    <div class="slide" data-slide="2" style="text-align: center;">
+      <!-- LuchtZorg Logo -->
+      <div style="display: flex; justify-content: center; margin-bottom: 0.5rem;">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 52px; height: 52px;">
+          <path d="M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5" 
+                stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12" 
+                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="1 2"/>
+          <path d="M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19" 
+                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round"/>
+          <path d="M7 25C10.5 25 13 23.5 16 24.5C18 25.2 19.5 26.5 22 26.5" 
+                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="2 2"/>
+        </svg>
+      </div>
+      <h1 style="font-size: 3.2rem; margin-bottom: 0.35rem; letter-spacing: -0.02em;">LuchtZorg</h1>
+      <p style="font-size: 1.35rem; color: var(--text-muted); margin-bottom: 2rem; font-weight: 700; letter-spacing: -0.01em;">Filling a gap in the market!</p>
+
+      <!-- 2-Axis Positioning Area with Outside Labels -->
+      <div style="position: relative; width: 100%; max-width: 760px; height: 350px; margin: 2rem auto 0;">
+        
+        <!-- Outside Axis Labels -->
+        <div style="position: absolute; top: -2rem; left: 50%; transform: translateX(-50%); font-size: 0.85rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #000000; white-space: nowrap;">
+          Personal Action ↑
+        </div>
+        
+        <div style="position: absolute; bottom: -2rem; left: 50%; transform: translateX(-50%); font-size: 0.85rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #737373; white-space: nowrap;">
+          Raw Data ↓
+        </div>
+
+        <div style="position: absolute; top: 50%; left: -1.25rem; transform: translate(-100%, -50%); font-size: 0.85rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #737373; text-align: right; line-height: 1.35; white-space: normal;">
+          ← Single<br>Topic
+        </div>
+
+        <div style="position: absolute; top: 50%; right: -1.25rem; transform: translate(100%, -50%); font-size: 0.85rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #000000; text-align: left; line-height: 1.35; white-space: normal;">
+          Full<br>Neighborhood →
+        </div>
+
+        <!-- The Clean Grid Frame -->
+        <div class="market-matrix-full" style="position: relative; width: 100%; height: 100%; background: var(--bg); border: 2px solid var(--card-border); border-radius: 1.25rem; overflow: hidden;">
+          <!-- Top-Right Quadrant Subtle Tint (The Winner's Space) -->
+          <div style="position: absolute; top: 0; right: 0; width: 50%; height: 50%; background: #f5f5f5;"></div>
+
+          <!-- Center Crosshair Lines -->
+          <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; border-top: 1.5px dashed #d4d4d4;"></div>
+          <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; border-left: 1.5px dashed #d4d4d4;"></div>
+
+          <!-- Competitor 1: Stookwijzer (Top-Left) -->
+          <div style="position: absolute; top: 25%; left: 25%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1.35rem; border-radius: 9999px; font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 700; background: #ffffff; color: #404040; border: 1.5px solid #e5e5e5; box-shadow: 0 2px 8px rgba(0,0,0,0.04); white-space: nowrap;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; color: #737373;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+            <span>Stookwijzer</span>
+          </div>
+
+          <!-- Competitor 2: Luchtmeetnet (Bottom-Left) -->
+          <div style="position: absolute; top: 75%; left: 25%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1.35rem; border-radius: 9999px; font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 700; background: #ffffff; color: #404040; border: 1.5px solid #e5e5e5; box-shadow: 0 2px 8px rgba(0,0,0,0.04); white-space: nowrap;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; color: #737373;"><path d="M12 2v20M7 7h10M5 12h14M8 17h8"/><circle cx="12" cy="4" r="2" fill="currentColor"/></svg>
+            <span>Luchtmeetnet</span>
+          </div>
+
+          <!-- Competitor 3: Samen Meten (Bottom-Center-Right) -->
+          <div style="position: absolute; top: 62%; left: 55%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1.35rem; border-radius: 9999px; font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 700; background: #ffffff; color: #404040; border: 1.5px solid #e5e5e5; box-shadow: 0 2px 8px rgba(0,0,0,0.04); white-space: nowrap;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; color: #737373;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+            <span>Samen Meten</span>
+          </div>
+
+          <!-- Competitor 4: Atlas Leefomgeving (Bottom-Far-Right) -->
+          <div style="position: absolute; top: 82%; left: 78%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1.35rem; border-radius: 9999px; font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 700; background: #ffffff; color: #404040; border: 1.5px solid #e5e5e5; box-shadow: 0 2px 8px rgba(0,0,0,0.04); white-space: nowrap;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; color: #737373;"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            <span>Atlas Leefomgeving</span>
+          </div>
+
+          <!-- HERO WINNER: ★ LuchtZorg (Top-Right) -->
+          <div style="position: absolute; top: 25%; left: 75%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 2.2rem; border-radius: 9999px; font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; font-weight: 800; background: #000000; color: #ffffff; border: 2px solid #000000; box-shadow: 0 8px 28px rgba(0,0,0,0.18); cursor: pointer; white-space: nowrap;" onclick="window.open('https://luchtzorg.web.app/adres.html', '_blank')">
+            <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+              <path d="M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="1 2"/>
+              <path d="M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round"/>
+            </svg>
+            <span>LuchtZorg</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: SYSTEM CONTEXT & ARCHITECTURE DIAGRAM -->
+    <div class="slide" data-slide="3" style="text-align: center;">
+      <!-- Title -->
+      <h1 style="font-size: 3.2rem; margin-bottom: 0.35rem; letter-spacing: -0.02em;">How LuchtZorg Works</h1>
+      <p style="font-size: 1.35rem; color: var(--text-muted); margin-bottom: 2.1rem; font-weight: 600;">System Architecture: Connecting citizens to verified science via AI & REST APIs.</p>
+
+      <!-- 3-Column Context Flow -->
+      <div style="display: flex; align-items: stretch; justify-content: center; max-width: 1080px; margin: 0 auto; gap: 0.75rem;">
+        
+        <!-- Entity 1: The Citizen (Left) -->
+        <div style="flex: 1; max-width: 250px; background: #ffffff; border: 2px solid var(--card-border); border-radius: 1.25rem; padding: 1.35rem 1.15rem; text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.85rem;">
+            <div style="width: 38px; height: 38px; border-radius: 9999px; background: #f5f5f5; border: 1px solid #e5e5e5; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">👤</div>
+            <div>
+              <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0;">The Citizen</h3>
+              <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Everyday Living</span>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.86rem; color: #404040;">
+            <div style="display: flex; align-items: flex-start; gap: 0.45rem;"><span>💬</span><span>Asks questions in everyday Dutch</span></div>
+            <div style="display: flex; align-items: flex-start; gap: 0.45rem;"><span>🚴</span><span>Chooses cleaner cycling routes</span></div>
+            <div style="display: flex; align-items: flex-start; gap: 0.45rem;"><span>⚡</span><span>Gets instant, actionable health verdicts</span></div>
+          </div>
+          <div style="margin-top: auto; padding-top: 0.75rem; border-top: 1px dashed #e5e5e5; font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">
+            Zero statistical or coding barriers
+          </div>
+        </div>
+
+        <!-- Connector 1 (Left to Center) -->
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 68px; gap: 0.75rem;">
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <span style="font-size: 0.65rem; font-weight: 800; color: #737373; text-transform: uppercase; white-space: nowrap;">Questions</span>
+            <span style="font-size: 1.2rem; color: #000000; line-height: 1;">→</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <span style="font-size: 1.2rem; color: #000000; line-height: 1;">←</span>
+            <span style="font-size: 0.65rem; font-weight: 800; color: #000000; text-transform: uppercase; white-space: nowrap;">Verdicts</span>
+          </div>
+        </div>
+
+        <!-- Entity 2: LuchtZorg System (Center Core with 3 Subsystems) -->
+        <div style="flex: 1.6; max-width: 440px; background: #000000; color: #ffffff; border: 2px solid #000000; border-radius: 1.25rem; padding: 1.2rem 1.25rem; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,0.18); display: flex; flex-direction: column; gap: 0.65rem;">
+          
+          <!-- System Title -->
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 0.55rem;">
+              <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 26px; height: 26px;">
+                <path d="M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="1 2"/>
+                <path d="M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round"/>
+              </svg>
+              <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #ffffff;">LuchtZorg Platform</h3>
+            </div>
+            <span style="font-size: 0.65rem; background: #262626; color: #a3a3a3; padding: 2px 7px; border-radius: 4px; font-weight: 700; text-transform: uppercase;">Cloud Core</span>
+          </div>
+
+          <!-- Subsystem 1: Frontend (PWA) -->
+          <div style="background: #171717; border: 1px solid #333333; border-radius: 0.75rem; padding: 0.65rem 0.85rem; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-size: 1.1rem;">📱</span>
+              <div>
+                <strong style="font-size: 0.88rem; color: #ffffff; display: block;">1. Frontend (PWA Web App)</strong>
+                <span style="font-size: 0.72rem; color: #a3a3a3;">Mobile & desktop client • Instant address lookup (<code>/adres</code>)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interaction Link: REST API -->
+          <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin: -0.2rem 0;">
+            <span style="font-size: 0.65rem; color: #888888; font-weight: 800; text-transform: uppercase; background: #262626; padding: 1px 8px; border-radius: 3px; border: 1px solid #383838;">↕ REST API (HTTPS JSON)</span>
+          </div>
+
+          <!-- Subsystem 2 & 3: Backend & AI Interface -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem;">
+            <!-- Backend -->
+            <div style="background: #171717; border: 1px solid #333333; border-radius: 0.75rem; padding: 0.65rem 0.75rem;">
+              <div style="display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.25rem;">
+                <span style="font-size: 0.95rem;">⚡</span>
+                <strong style="font-size: 0.84rem; color: #ffffff;">2. Backend (Python)</strong>
+              </div>
+              <span style="font-size: 0.71rem; color: #a3a3a3; display: block; line-height: 1.3;">FastAPI service • Verified R science (<em>Analyse-Together</em>) & statutory math</span>
+            </div>
+
+            <!-- AI Interface -->
+            <div style="background: #171717; border: 1px solid #333333; border-radius: 0.75rem; padding: 0.65rem 0.75rem;">
+              <div style="display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.25rem;">
+                <span style="font-size: 0.95rem;">🤖</span>
+                <strong style="font-size: 0.84rem; color: #ffffff;">3. AI Interface (LLM)</strong>
+              </div>
+              <span style="font-size: 0.71rem; color: #a3a3a3; display: block; line-height: 1.3;">OpenAI GPT-4o / LangChain • Translates natural language into tool queries</span>
+            </div>
+          </div>
+
+          <!-- Interaction Footer Note -->
+          <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #262626; padding-top: 0.45rem; font-size: 0.68rem; color: #a3a3a3;">
+            <span>⇄ <strong>Tool Calling:</strong> AI selects tools</span>
+            <span style="color: #4ade80; font-weight: 700;">Zero Hallucinations Guarantee</span>
+          </div>
+        </div>
+
+        <!-- Connector 2 (Center to Right) -->
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 68px; gap: 0.75rem;">
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <span style="font-size: 0.65rem; font-weight: 800; color: #000000; text-transform: uppercase; white-space: nowrap;">Queries</span>
+            <span style="font-size: 1.2rem; color: #000000; line-height: 1;">→</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <span style="font-size: 1.2rem; color: #000000; line-height: 1;">←</span>
+            <span style="font-size: 0.65rem; font-weight: 800; color: #737373; text-transform: uppercase; white-space: nowrap;">Sensors</span>
+          </div>
+        </div>
+
+        <!-- Entity 3: External Systems (Right Stack) -->
+        <div style="flex: 1; max-width: 250px; display: flex; flex-direction: column; gap: 0.6rem;">
+          <!-- Source 1: Samen Meten -->
+          <div style="background: #ffffff; border: 1.5px solid var(--card-border); border-radius: 0.85rem; padding: 0.75rem 0.85rem; text-align: left; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+            <div style="font-size: 1.2rem;">📡</div>
+            <div>
+              <strong style="display: block; font-size: 0.88rem; font-weight: 800;">Samen Meten API</strong>
+              <span style="font-size: 0.73rem; color: var(--text-muted); display: block; line-height: 1.25;">1,000+ live citizen sensors</span>
+            </div>
+          </div>
+
+          <!-- Source 2: RIVM -->
+          <div style="background: #ffffff; border: 1.5px solid var(--card-border); border-radius: 0.85rem; padding: 0.75rem 0.85rem; text-align: left; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+            <div style="font-size: 1.2rem;">🏛️</div>
+            <div>
+              <strong style="display: block; font-size: 0.88rem; font-weight: 800;">RIVM Science</strong>
+              <span style="font-size: 0.73rem; color: var(--text-muted); display: block; line-height: 1.25;">Official reference stations & math</span>
+            </div>
+          </div>
+
+          <!-- Source 3: Kadaster -->
+          <div style="background: #ffffff; border: 1.5px solid var(--card-border); border-radius: 0.85rem; padding: 0.75rem 0.85rem; text-align: left; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+            <div style="font-size: 1.2rem;">📍</div>
+            <div>
+              <strong style="display: block; font-size: 0.88rem; font-weight: 800;">Kadaster (PDOK)</strong>
+              <span style="font-size: 0.73rem; color: var(--text-muted); display: block; line-height: 1.25;">National addresses & boundaries</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Trust Footer Banner -->
+      <div style="display: flex; justify-content: center; margin-top: 1.5rem;">
+        <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #f5f5f5; border: 1px solid #e5e5e5; border-radius: 9999px; padding: 0.35rem 1.15rem; font-size: 0.8rem; font-weight: 700; color: #404040; max-width: 780px;">
+          <span>🔒</span>
+          <span><strong>No Guesswork Guarantee:</strong> AI translates natural words — official sensors and statutory math provide the facts.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: LIVE APP, QR CODE & ACCESS -->
+    <div class="slide" data-slide="4" style="text-align: center;">
+      <!-- LuchtZorg Logo -->
+      <div style="display: flex; justify-content: center; margin-bottom: 0.65rem;">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 76px; height: 76px;">
+          <path d="M18 29.5C18 29.5 6 22 6 13.5C6 9.5 9 6.5 13 6.5C15.5 6.5 17.5 7.8 18 9C18.5 7.8 20.5 6.5 23 6.5C27 6.5 30 9.5 30 13.5C30 18 25.5 23.5 21.5 26.5" 
+                stroke="var(--text)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 11C6 11 9 13.5 13 13.5C15.5 13.5 17 12 19 12" 
+                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="1 2"/>
+          <path d="M3 18C8 18 11 20 16 20C19.5 20 22 17.5 26 17.5C28.5 17.5 31 19 33 19" 
+                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round"/>
+          <path d="M7 25C10.5 25 13 23.5 16 24.5C18 25.2 19.5 26.5 22 26.5" 
+                stroke="var(--text)" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="2 2"/>
+        </svg>
+      </div>
+
+      <!-- Title & Subtitle -->
+      <h1 style="font-size: 3.6rem; margin-bottom: 0.35rem; letter-spacing: -0.02em;">LuchtZorg</h1>
+      <p style="font-size: 1.45rem; color: var(--text-muted); margin-bottom: 1.6rem; font-weight: 700; letter-spacing: -0.01em;">For people who care for their air</p>
+
+      <!-- QR Code Container -->
+      <div style="display: flex; justify-content: center; margin-bottom: 1.25rem;">
+        <div style="background: #ffffff; padding: 14px; border-radius: 1.25rem; border: 2px solid var(--card-border); box-shadow: 0 8px 30px rgba(0,0,0,0.06); cursor: pointer;" onclick="window.open('https://luchtzorg.web.app/adres.html', '_blank')">
+          <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmVyc2lvbj0iMS4xIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDI5IDI5Ij4KCTwhLS0gQ3JlYXRlZCB3aXRoIGh0dHBzOi8vYXBpLnFyc2VydmVyLmNvbSAoUVIgQ29kZSBBUEksIHNlZSBnb1FSLm1lL2FwaSBmb3IgaW5mb3JtYXRpb24pIC0tPgoJPHRpdGxlPlFSIENvZGU8L3RpdGxlPgoJPGRlc2M+aHR0cHM6Ly9sdWNodHpvcmcud2ViLmFwcC9hZHJlcy5odG1sPC9kZXNjPgoJPHJlY3Qgc3R5bGU9ImZpbGw6cmdiKDI1NSwgMjU1LCAyNTUpO2ZpbGwtb3BhY2l0eToxIiB4PSIwIiB5PSIwIiB3aWR0aD0iMjkiIGhlaWdodD0iMjkiIC8+Cgk8ZyBpZD0iZWxlbWVudHMiPgoJCTxwYXRoIHN0eWxlPSJmaWxsOnJnYigwLCAwLCAwKSIgZD0iTSAwLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDEsMCBsIDEsMCAwLDEgLTEsMCB6IE0gMiwwIGwgMSwwIDAsMSAtMSwwIHogTSAzLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDQsMCBsIDEsMCAwLDEgLTEsMCB6IE0gNSwwIGwgMSwwIDAsMSAtMSwwIHogTSA2LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDEzLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDIwLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDAgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDAgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMSBsIDEsMCAwLDEgLTEsMCB6IE0gNiwxIGwgMSwwIDAsMSAtMSwwIHogTSA4LDEgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDEgbCAxLDAgMCwxIC0xLDAgeiBNIDEzLDEgbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDEgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDEgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDEgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDEgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDEgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMiBsIDEsMCAwLDEgLTEsMCB6IE0gMiwyIGwgMSwwIDAsMSAtMSwwIHogTSAzLDIgbCAxLDAgMCwxIC0xLDAgeiBNIDQsMiBsIDEsMCAwLDEgLTEsMCB6IE0gNiwyIGwgMSwwIDAsMSAtMSwwIHogTSAxMiwyIGwgMSwwIDAsMSAtMSwwIHogTSAxMywyIGwgMSwwIDAsMSAtMSwwIHogTSAxNSwyIGwgMSwwIDAsMSAtMSwwIHogTSAxNiwyIGwgMSwwIDAsMSAtMSwwIHogTSAxOSwyIGwgMSwwIDAsMSAtMSwwIHogTSAyMCwyIGwgMSwwIDAsMSAtMSwwIHogTSAyMiwyIGwgMSwwIDAsMSAtMSwwIHogTSAyNCwyIGwgMSwwIDAsMSAtMSwwIHogTSAyNSwyIGwgMSwwIDAsMSAtMSwwIHogTSAyNiwyIGwgMSwwIDAsMSAtMSwwIHogTSAyOCwyIGwgMSwwIDAsMSAtMSwwIHogTSAwLDMgbCAxLDAgMCwxIC0xLDAgeiBNIDIsMyBsIDEsMCAwLDEgLTEsMCB6IE0gMywzIGwgMSwwIDAsMSAtMSwwIHogTSA0LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDYsMyBsIDEsMCAwLDEgLTEsMCB6IE0gOCwzIGwgMSwwIDAsMSAtMSwwIHogTSA5LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDMgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDMgbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDE3LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDMgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDMgbCAxLDAgMCwxIC0xLDAgeiBNIDAsNCBsIDEsMCAwLDEgLTEsMCB6IE0gMiw0IGwgMSwwIDAsMSAtMSwwIHogTSAzLDQgbCAxLDAgMCwxIC0xLDAgeiBNIDQsNCBsIDEsMCAwLDEgLTEsMCB6IE0gNiw0IGwgMSwwIDAsMSAtMSwwIHogTSA5LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDQgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDQgbCAxLDAgMCwxIC0xLDAgeiBNIDAsNSBsIDEsMCAwLDEgLTEsMCB6IE0gNiw1IGwgMSwwIDAsMSAtMSwwIHogTSA4LDUgbCAxLDAgMCwxIC0xLDAgeiBNIDksNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTEsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTIsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTYsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTgsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjIsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjgsNSBsIDEsMCAwLDEgLTEsMCB6IE0gMCw2IGwgMSwwIDAsMSAtMSwwIHogTSAxLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDIsNiBsIDEsMCAwLDEgLTEsMCB6IE0gMyw2IGwgMSwwIDAsMSAtMSwwIHogTSA0LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDUsNiBsIDEsMCAwLDEgLTEsMCB6IE0gNiw2IGwgMSwwIDAsMSAtMSwwIHogTSA4LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDIwLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDYgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDYgbCAxLDAgMCwxIC0xLDAgeiBNIDksNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTAsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTEsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTQsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTYsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTgsNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTksNyBsIDEsMCAwLDEgLTEsMCB6IE0gMCw4IGwgMSwwIDAsMSAtMSwwIHogTSAxLDggbCAxLDAgMCwxIC0xLDAgeiBNIDIsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMyw4IGwgMSwwIDAsMSAtMSwwIHogTSA0LDggbCAxLDAgMCwxIC0xLDAgeiBNIDYsOCBsIDEsMCAwLDEgLTEsMCB6IE0gNyw4IGwgMSwwIDAsMSAtMSwwIHogTSA4LDggbCAxLDAgMCwxIC0xLDAgeiBNIDksOCBsIDEsMCAwLDEgLTEsMCB6IE0gMTEsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMTcsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjEsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjMsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjUsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjcsOCBsIDEsMCAwLDEgLTEsMCB6IE0gMCw5IGwgMSwwIDAsMSAtMSwwIHogTSAxLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDQsOSBsIDEsMCAwLDEgLTEsMCB6IE0gNSw5IGwgMSwwIDAsMSAtMSwwIHogTSA3LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDEzLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDIwLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDkgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDkgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMTAgbCAxLDAgMCwxIC0xLDAgeiBNIDYsMTAgbCAxLDAgMCwxIC0xLDAgeiBNIDcsMTAgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDEwIGwgMSwwIDAsMSAtMSwwIHogTSAxMywxMCBsIDEsMCAwLDEgLTEsMCB6IE0gMTQsMTAgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDEwIGwgMSwwIDAsMSAtMSwwIHogTSAxOCwxMCBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMTAgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDEwIGwgMSwwIDAsMSAtMSwwIHogTSAxLDExIGwgMSwwIDAsMSAtMSwwIHogTSAyLDExIGwgMSwwIDAsMSAtMSwwIHogTSA0LDExIGwgMSwwIDAsMSAtMSwwIHogTSA4LDExIGwgMSwwIDAsMSAtMSwwIHogTSAxMiwxMSBsIDEsMCAwLDEgLTEsMCB6IE0gMTMsMTEgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDExIGwgMSwwIDAsMSAtMSwwIHogTSAxNiwxMSBsIDEsMCAwLDEgLTEsMCB6IE0gMTgsMTEgbCAxLDAgMCwxIC0xLDAgeiBNIDIwLDExIGwgMSwwIDAsMSAtMSwwIHogTSAyMSwxMSBsIDEsMCAwLDEgLTEsMCB6IE0gMjUsMTEgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDExIGwgMSwwIDAsMSAtMSwwIHogTSAyLDEyIGwgMSwwIDAsMSAtMSwwIHogTSAzLDEyIGwgMSwwIDAsMSAtMSwwIHogTSA2LDEyIGwgMSwwIDAsMSAtMSwwIHogTSA3LDEyIGwgMSwwIDAsMSAtMSwwIHogTSA5LDEyIGwgMSwwIDAsMSAtMSwwIHogTSAxMCwxMiBsIDEsMCAwLDEgLTEsMCB6IE0gMTIsMTIgbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDEyIGwgMSwwIDAsMSAtMSwwIHogTSAxNSwxMiBsIDEsMCAwLDEgLTEsMCB6IE0gMTYsMTIgbCAxLDAgMCwxIC0xLDAgeiBNIDE3LDEyIGwgMSwwIDAsMSAtMSwwIHogTSAxOCwxMiBsIDEsMCAwLDEgLTEsMCB6IE0gMjUsMTIgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDEyIGwgMSwwIDAsMSAtMSwwIHogTSAwLDEzIGwgMSwwIDAsMSAtMSwwIHogTSAxLDEzIGwgMSwwIDAsMSAtMSwwIHogTSA1LDEzIGwgMSwwIDAsMSAtMSwwIHogTSA5LDEzIGwgMSwwIDAsMSAtMSwwIHogTSAxNiwxMyBsIDEsMCAwLDEgLTEsMCB6IE0gMTcsMTMgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDEzIGwgMSwwIDAsMSAtMSwwIHogTSAxOSwxMyBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMTMgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDEzIGwgMSwwIDAsMSAtMSwwIHogTSAyMywxMyBsIDEsMCAwLDEgLTEsMCB6IE0gMjQsMTMgbCAxLDAgMCwxIC0xLDAgeiBNIDI4LDEzIGwgMSwwIDAsMSAtMSwwIHogTSAwLDE0IGwgMSwwIDAsMSAtMSwwIHogTSA0LDE0IGwgMSwwIDAsMSAtMSwwIHogTSA1LDE0IGwgMSwwIDAsMSAtMSwwIHogTSA2LDE0IGwgMSwwIDAsMSAtMSwwIHogTSAxMSwxNCBsIDEsMCAwLDEgLTEsMCB6IE0gMTIsMTQgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDE0IGwgMSwwIDAsMSAtMSwwIHogTSAxNywxNCBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMTQgbCAxLDAgMCwxIC0xLDAgeiBNIDIxLDE0IGwgMSwwIDAsMSAtMSwwIHogTSAyMiwxNCBsIDEsMCAwLDEgLTEsMCB6IE0gMjMsMTQgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDE0IGwgMSwwIDAsMSAtMSwwIHogTSAyNiwxNCBsIDEsMCAwLDEgLTEsMCB6IE0gMiwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gMywxNSBsIDEsMCAwLDEgLTEsMCB6IE0gNCwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gNSwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gNywxNSBsIDEsMCAwLDEgLTEsMCB6IE0gOCwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTAsMTUgbCAxLDAgMCwxIC0xLDAgeiBNIDExLDE1IGwgMSwwIDAsMSAtMSwwIHogTSAxNCwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsMTUgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDE1IGwgMSwwIDAsMSAtMSwwIHogTSAyMCwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjEsMTUgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDE1IGwgMSwwIDAsMSAtMSwwIHogTSAyNCwxNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjcsMTUgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDEsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDQsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDUsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDYsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDExLDE2IGwgMSwwIDAsMSAtMSwwIHogTSAxNywxNiBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMTYgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDE2IGwgMSwwIDAsMSAtMSwwIHogTSAyNiwxNiBsIDEsMCAwLDEgLTEsMCB6IE0gMCwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMSwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gNywxNyBsIDEsMCAwLDEgLTEsMCB6IE0gOCwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gOSwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTIsMTcgbCAxLDAgMCwxIC0xLDAgeiBNIDEzLDE3IGwgMSwwIDAsMSAtMSwwIHogTSAxNCwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTYsMTcgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDE3IGwgMSwwIDAsMSAtMSwwIHogTSAxOSwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMTcgbCAxLDAgMCwxIC0xLDAgeiBNIDIxLDE3IGwgMSwwIDAsMSAtMSwwIHogTSAyMiwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMjMsMTcgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDE3IGwgMSwwIDAsMSAtMSwwIHogTSAyNiwxNyBsIDEsMCAwLDEgLTEsMCB6IE0gMjgsMTcgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDIsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDUsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDYsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDcsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDgsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDE4IGwgMSwwIDAsMSAtMSwwIHogTSAxMywxOCBsIDEsMCAwLDEgLTEsMCB6IE0gMTQsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDE4IGwgMSwwIDAsMSAtMSwwIHogTSAxOCwxOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjIsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDE4IGwgMSwwIDAsMSAtMSwwIHogTSAyNCwxOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjYsMTggbCAxLDAgMCwxIC0xLDAgeiBNIDAsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDIsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDMsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDgsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDE5IGwgMSwwIDAsMSAtMSwwIHogTSAxMywxOSBsIDEsMCAwLDEgLTEsMCB6IE0gMTYsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDE5IGwgMSwwIDAsMSAtMSwwIHogTSAyMCwxOSBsIDEsMCAwLDEgLTEsMCB6IE0gMjIsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDE5IGwgMSwwIDAsMSAtMSwwIHogTSAyNCwxOSBsIDEsMCAwLDEgLTEsMCB6IE0gMjcsMTkgbCAxLDAgMCwxIC0xLDAgeiBNIDAsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDYsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDksMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDIwIGwgMSwwIDAsMSAtMSwwIHogTSAxNCwyMCBsIDEsMCAwLDEgLTEsMCB6IE0gMTcsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDIwIGwgMSwwIDAsMSAtMSwwIHogTSAyMCwyMCBsIDEsMCAwLDEgLTEsMCB6IE0gMjEsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDIwIGwgMSwwIDAsMSAtMSwwIHogTSAyMywyMCBsIDEsMCAwLDEgLTEsMCB6IE0gMjQsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDIwIGwgMSwwIDAsMSAtMSwwIHogTSAyNywyMCBsIDEsMCAwLDEgLTEsMCB6IE0gMjgsMjAgbCAxLDAgMCwxIC0xLDAgeiBNIDgsMjEgbCAxLDAgMCwxIC0xLDAgeiBNIDksMjEgbCAxLDAgMCwxIC0xLDAgeiBNIDEwLDIxIGwgMSwwIDAsMSAtMSwwIHogTSAxOCwyMSBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMjEgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDIxIGwgMSwwIDAsMSAtMSwwIHogTSAyNSwyMSBsIDEsMCAwLDEgLTEsMCB6IE0gMjYsMjEgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDIxIGwgMSwwIDAsMSAtMSwwIHogTSAyOCwyMSBsIDEsMCAwLDEgLTEsMCB6IE0gMCwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMSwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMiwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMywyMiBsIDEsMCAwLDEgLTEsMCB6IE0gNCwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gNSwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gNiwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gOCwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMTAsMjIgbCAxLDAgMCwxIC0xLDAgeiBNIDExLDIyIGwgMSwwIDAsMSAtMSwwIHogTSAxMiwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsMjIgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDIyIGwgMSwwIDAsMSAtMSwwIHogTSAxOSwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMjIgbCAxLDAgMCwxIC0xLDAgeiBNIDIyLDIyIGwgMSwwIDAsMSAtMSwwIHogTSAyNCwyMiBsIDEsMCAwLDEgLTEsMCB6IE0gMjUsMjIgbCAxLDAgMCwxIC0xLDAgeiBNIDI2LDIyIGwgMSwwIDAsMSAtMSwwIHogTSAwLDIzIGwgMSwwIDAsMSAtMSwwIHogTSA2LDIzIGwgMSwwIDAsMSAtMSwwIHogTSAxMSwyMyBsIDEsMCAwLDEgLTEsMCB6IE0gMTQsMjMgbCAxLDAgMCwxIC0xLDAgeiBNIDE4LDIzIGwgMSwwIDAsMSAtMSwwIHogTSAyMCwyMyBsIDEsMCAwLDEgLTEsMCB6IE0gMjQsMjMgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDIzIGwgMSwwIDAsMSAtMSwwIHogTSAwLDI0IGwgMSwwIDAsMSAtMSwwIHogTSAyLDI0IGwgMSwwIDAsMSAtMSwwIHogTSAzLDI0IGwgMSwwIDAsMSAtMSwwIHogTSA0LDI0IGwgMSwwIDAsMSAtMSwwIHogTSA2LDI0IGwgMSwwIDAsMSAtMSwwIHogTSA4LDI0IGwgMSwwIDAsMSAtMSwwIHogTSAxMSwyNCBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsMjQgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDI0IGwgMSwwIDAsMSAtMSwwIHogTSAxNywyNCBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMjQgbCAxLDAgMCwxIC0xLDAgeiBNIDIxLDI0IGwgMSwwIDAsMSAtMSwwIHogTSAyMiwyNCBsIDEsMCAwLDEgLTEsMCB6IE0gMjMsMjQgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDI0IGwgMSwwIDAsMSAtMSwwIHogTSAyNiwyNCBsIDEsMCAwLDEgLTEsMCB6IE0gMCwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMiwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMywyNSBsIDEsMCAwLDEgLTEsMCB6IE0gNCwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gNiwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gOCwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTAsMjUgbCAxLDAgMCwxIC0xLDAgeiBNIDEyLDI1IGwgMSwwIDAsMSAtMSwwIHogTSAxMywyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMTQsMjUgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDI1IGwgMSwwIDAsMSAtMSwwIHogTSAxOSwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjAsMjUgbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDI1IGwgMSwwIDAsMSAtMSwwIHogTSAyNSwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMjYsMjUgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDI1IGwgMSwwIDAsMSAtMSwwIHogTSAyOCwyNSBsIDEsMCAwLDEgLTEsMCB6IE0gMCwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMiwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMywyNiBsIDEsMCAwLDEgLTEsMCB6IE0gNCwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gNiwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gOCwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gOSwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMTAsMjYgbCAxLDAgMCwxIC0xLDAgeiBNIDEzLDI2IGwgMSwwIDAsMSAtMSwwIHogTSAxNCwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMTUsMjYgbCAxLDAgMCwxIC0xLDAgeiBNIDE2LDI2IGwgMSwwIDAsMSAtMSwwIHogTSAxNywyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMTgsMjYgbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDI2IGwgMSwwIDAsMSAtMSwwIHogTSAyMiwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMjMsMjYgbCAxLDAgMCwxIC0xLDAgeiBNIDI0LDI2IGwgMSwwIDAsMSAtMSwwIHogTSAyNSwyNiBsIDEsMCAwLDEgLTEsMCB6IE0gMjYsMjYgbCAxLDAgMCwxIC0xLDAgeiBNIDI3LDI2IGwgMSwwIDAsMSAtMSwwIHogTSAwLDI3IGwgMSwwIDAsMSAtMSwwIHogTSA2LDI3IGwgMSwwIDAsMSAtMSwwIHogTSA4LDI3IGwgMSwwIDAsMSAtMSwwIHogTSAxMiwyNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTMsMjcgbCAxLDAgMCwxIC0xLDAgeiBNIDE1LDI3IGwgMSwwIDAsMSAtMSwwIHogTSAxNiwyNyBsIDEsMCAwLDEgLTEsMCB6IE0gMTgsMjcgbCAxLDAgMCwxIC0xLDAgeiBNIDIwLDI3IGwgMSwwIDAsMSAtMSwwIHogTSAyMSwyNyBsIDEsMCAwLDEgLTEsMCB6IE0gMjQsMjcgbCAxLDAgMCwxIC0xLDAgeiBNIDI1LDI3IGwgMSwwIDAsMSAtMSwwIHogTSAyNywyNyBsIDEsMCAwLDEgLTEsMCB6IE0gMCwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMSwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMiwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMywyOCBsIDEsMCAwLDEgLTEsMCB6IE0gNCwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gNSwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gNiwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gOCwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMTIsMjggbCAxLDAgMCwxIC0xLDAgeiBNIDE0LDI4IGwgMSwwIDAsMSAtMSwwIHogTSAxNSwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMTcsMjggbCAxLDAgMCwxIC0xLDAgeiBNIDE5LDI4IGwgMSwwIDAsMSAtMSwwIHogTSAyMSwyOCBsIDEsMCAwLDEgLTEsMCB6IE0gMjIsMjggbCAxLDAgMCwxIC0xLDAgeiBNIDIzLDI4IGwgMSwwIDAsMSAtMSwwIHogTSAyNiwyOCBsIDEsMCAwLDEgLTEsMCB6ICIgLz4KCTwvZz4KPC9zdmc+Cg==" style="width: 175px; height: 175px; display: block;" alt="Scan QR Code to launch LuchtZorg" />
+        </div>
+      </div>
+
+      <!-- Web App URL below QR code -->
+      <div>
+        <a href="https://luchtzorg.web.app" target="_blank" rel="noopener" style="font-family: 'Space Grotesk', -apple-system, sans-serif; font-size: 1.5rem; font-weight: 800; color: #000000; text-decoration: none; border-bottom: 2px solid #000000; padding-bottom: 2px; letter-spacing: -0.01em; transition: opacity 0.2s ease;">
+          luchtzorg.web.app ↗
+        </a>
+      </div>
+    </div>
+  </div>
+
+    <!-- Bottom Left URL (opposite Nav) -->
+  <div id="footer-url">
+    <a href="https://luchtzorg.web.app" target="_blank" rel="noopener">luchtzorg.web.app</a>
+  </div>
+
+<div id="nav">
+    <button class="nav-btn" id="prev-btn" title="Previous Slide (Shortcut: ←)">←</button>
+    <span id="indicator">1 / 4</span>
+    <button class="nav-btn" id="next-btn" title="Next Slide (Shortcut: →)">→</button>
+  </div>
+
+  <script>
+    const slides = document.querySelectorAll(".slide");
+    const indicator = document.getElementById("indicator");
+    const progress = document.getElementById("progress");
+    const prevBtn = document.getElementById("prev-btn");
+    const nextBtn = document.getElementById("next-btn");
+    
+    let cur = 0;
+
+    function go(idx) {
+      if (idx < 0 || idx >= slides.length) return;
+      slides.forEach(s => s.classList.remove("active"));
+      cur = idx;
+      slides[cur].classList.add("active");
+      indicator.textContent = (cur + 1) + " / " + slides.length;
+      progress.style.width = (((cur + 1) / slides.length) * 100) + "%";
+    }
+
+    // Set initial state
+    indicator.textContent = "1 / " + slides.length;
+    progress.style.width = (100 / slides.length) + "%";
+
+    prevBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      go(cur - 1);
+    });
+
+    nextBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      go(cur + 1);
+    });
+
+    // Keyboard navigation
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown" || e.key === "ArrowDown" || e.key === "Enter" || e.key === "n") {
+        e.preventDefault();
+        go(cur + 1);
+      } else if (e.key === "ArrowLeft" || e.key === "PageUp" || e.key === "ArrowUp" || e.key === "Backspace" || e.key === "p") {
+        e.preventDefault();
+        go(cur - 1);
+      }
+    });
+
+    // Click anywhere on slide background to advance (only if not selecting text)
+    document.addEventListener("click", (e) => {
+      const sel = window.getSelection ? window.getSelection().toString() : "";
+      if (sel && sel.length > 0) return;
+      if (e.target.closest(".card, #nav, #footer-url, button, a")) return;
+      go(cur + 1);
+    });
+  </script>
+</body>
+</html>

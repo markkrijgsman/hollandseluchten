@@ -15,6 +15,7 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory frontend
 Then open either page in your browser:
 - **Address check (primary entry)**: [http://localhost:8080/](http://localhost:8080/)
 - **Chat**: [http://localhost:8080/gesprek/](http://localhost:8080/gesprek/)
+- **Pitch Deck (Presentation)**: [http://localhost:8080/presentation.html](http://localhost:8080/presentation.html)
 
 > **Note:** Always serve `frontend/` over `http://localhost` rather than opening `.html` files via `file://` so browser `fetch()` requests and CORS work properly.
 
@@ -48,7 +49,9 @@ uvicorn app.main:app --reload --port 8000
 - **Custom API URL override**: Pass `?api=http://127.0.0.1:8000` in the browser URL to point to a different host or port.
 
 ### Mode B: Standalone Mode (No Backend Needed)
+
 If `localhost:8000` is **not** running (or when hosted publicly on Firebase/GitHub Pages):
+
 - **Geocoding**: Calls the public Dutch government **PDOK Locatieserver API** (`api.pdok.nl`) directly from the browser.
 - **Air Quality Data**: Uses `frontend/js/real-data.js`—an embedded snapshot of the official **Hackathon Hollandse Luchten Parquet dataset** (67 Luchtmeetnet PM2.5 stations, 638 days from `2025-01-01` to `2026-09-30`, filtered with `value < 100.0` and `>= 18 valid hours/day`).
 - **Calculations**: Runs the exact same Haversine distance + $1/d^2$ inverse-distance weighting, 365-day rolling mean, and WHO/EU exceedance counts in JavaScript.
@@ -102,10 +105,12 @@ import duckdb, json, csv
 ## 5. Deploying to Firebase Hosting
 
 The public live demo is hosted on Firebase project `sample-bumps-firebase-ai-app` at:
+
 - [https://hollandse-luchten-analyse.web.app/adres.html](https://hollandse-luchten-analyse.web.app/adres.html)
 - [https://hollandse-luchten-analyse.web.app/index.html](https://hollandse-luchten-analyse.web.app/index.html)
 
 ### First-Time Setup (Once per Laptop)
+
 Log in with the Google account that has **Editor** permissions on the Firebase project:
 
 ```bash
@@ -113,11 +118,11 @@ npx -y firebase-tools@latest login
 ```
 
 ### Deploy Frontend Changes
+
 From the root of the `hollandseluchten` repository (where `firebase.json` and `.firebaserc` live), run:
 
 ```bash
 npx -y firebase-tools@latest deploy --only hosting --project sample-bumps-firebase-ai-app
 ```
-*(Or simply `npx -y firebase-tools@latest deploy --only hosting` after pulling `.firebaserc`.)*
 
-
+_(Or simply `npx -y firebase-tools@latest deploy --only hosting` after pulling `.firebaserc`.)_

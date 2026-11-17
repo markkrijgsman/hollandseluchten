@@ -44,7 +44,11 @@ button, input, select { font: inherit; color: inherit; }
 /* Bovenbalk */
 .topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 24px; height: 54px; padding: 0 24px; background: #fff; border-bottom: 1px solid var(--line); }
 .logo { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-weight: 500; letter-spacing: -0.02em; }
-.logo-mark { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--yellow) 0 30%, var(--blue) 31%); }
+.logo-mark { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; }
+.logo-mark svg { width: 100%; height: 100%; }
+.logo-titles { display: flex; flex-direction: column; line-height: 1.1; }
+.logo-text { font-weight: 700; font-size: 1.05rem; letter-spacing: -0.02em; color: var(--ink); }
+.logo-sub { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--blue); }
 .topnav { display: flex; align-self: stretch; gap: 4px; }
 .topnav a { display: flex; align-items: center; padding: 0 12px; color: var(--ink); text-decoration: none; font-size: 0.95rem; border-bottom: 3px solid transparent; margin-bottom: -1px; }
 .topnav a:hover { background: var(--bg); }

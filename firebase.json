@@ -1,6 +1,15 @@
 {
   "hosting": [
     {
+      "site": "luchtzorg",
+      "public": "frontend",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
+    },
+    {
       "site": "hollandse-luchten-analyse",
       "public": "frontend",
       "ignore": [

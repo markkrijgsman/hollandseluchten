@@ -4,5 +4,8 @@ __pycache__/
 .idea/
 *.egg-info/
 .firebase/
-
+.DS_Store
 .env
+
+# Exclude local mhtml documentation archives
+*.mhtml
