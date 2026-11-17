@@ -115,10 +115,14 @@ def test_tools_are_exposed_with_schemas():
                           "pm25_trend", "pm25_events"}
     assert "from" in tools["pm25_compare"].args_schema["properties"]
     assert tools["pm25_compare"].description.startswith("Compare")
+    for t in tools.values():
+        raw = str(t.args_schema)
+        assert "exclusiveMinimum" not in raw and "'title'" not in raw and "'default'" not in raw
 
 
 def test_chat_answers_503_without_api_key(make_client, monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     app.dependency_overrides.pop(get_chat_model, None)
     r = make_client().post("/chat", json={"message": "hi"})
     assert r.status_code == 503 and "OPENAI_API_KEY" in r.json()["detail"]

@@ -6,6 +6,7 @@ __pycache__/
 .firebase/
 .DS_Store
 .env
+*.kits.parquet
 
 # Exclude local mhtml documentation archives
 *.mhtml

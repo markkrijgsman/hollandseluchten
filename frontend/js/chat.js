@@ -11,9 +11,11 @@
   async function checkCoverage() {
     const badge = document.getElementById("badge");
     try {
-      const res = await fetch(`${apiBase()}/coverage`, { signal: AbortSignal.timeout(1500) });
+      const base = apiBase();
+      const res = await fetch(`${base}/coverage`, { signal: AbortSignal.timeout(8000) });
       if (res.ok && badge) {
-        badge.textContent = "Live REST API · localhost:8000";
+        const host = new URL(base).host;
+        badge.textContent = host.includes("run.app") ? "Live REST API · Cloud" : `Live REST API · ${host}`;
         badge.style.background = "#e9f6ef";
         badge.style.color = "#258758";
         badge.style.borderColor = "#b7e1cd";
@@ -119,6 +121,8 @@
 
     const emptyEl = document.getElementById("chat-empty");
     if (emptyEl) emptyEl.style.display = "none";
+    const newBtn = document.getElementById("chat-new");
+    if (newBtn) newBtn.hidden = false;
 
     state.loading = true;
     document.getElementById("chat-submit").disabled = true;
@@ -156,12 +160,12 @@
       const msg =
         err.name === "TimeoutError"
           ? t(
-              "Geen antwoord van de server (time-out). Is de backend actief?",
-              "No response from server (timeout). Is the backend running?"
+              "Geen antwoord van de analyseserver (time-out). Probeer het zo opnieuw.",
+              "No response from the analysis server (timeout). Please try again in a moment."
             )
           : t(
-              "Verbindingsfout. Is de backend actief op localhost:8000?",
-              "Connection error. Is the backend running on localhost:8000?"
+              "Verbindingsfout met de analyseserver. Controleer je verbinding en probeer het opnieuw.",
+              "Connection error with the analysis server. Please check your connection and try again."
             );
       appendAssistantMessage({ answer: msg });
     } finally {
@@ -187,15 +191,20 @@
   }
 
   function applyChrome() {
+    I.sync();
     document.title = t(
-      "Stel een vraag · Hollandse Luchten",
-      "Ask a question · Hollandse Luchten"
+      "Stel een vraag · LuchtZorg",
+      "Ask a question · LuchtZorg"
     );
     const labels = {
-      "nav-address": ["Mijn adres", "My address"],
+      "brand-sub": ["Voor mensen die om hun lucht geven", "For people who care for their air"],
+      "nav-address": ["Check mijn plek", "Check my spot"],
       "nav-ask": ["Stel een vraag", "Ask a question"],
+      "menu-address": ["Check mijn plek", "Check my spot"],
+      "menu-ask": ["Stel een vraag", "Ask a question"],
+      "menu-presentation": ["Presentatie", "Presentation"],
       "side-tools": ["Luchtkwaliteit", "Air quality"],
-      "side-address": ["Mijn adres", "My address"],
+      "side-address": ["Check mijn plek", "Check my spot"],
       "side-ask": ["Stel een vraag", "Ask a question"],
       "chat-title": ["Stel je vraag over de luchtkwaliteit", "Ask your question about air quality"],
       "chat-lead": [
@@ -224,17 +233,18 @@
     renderExamples();
   }
 
-  document.querySelectorAll(".lang-toggle button").forEach((b) =>
-    b.addEventListener("click", () => {
-      if (b.dataset.lang !== I.lang) I.set(b.dataset.lang);
-    })
-  );
-
   I.onChange(() => applyChrome());
+
+  const chatInput = document.getElementById("chat-input");
+  chatInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.isComposing || e.keyCode === 229)) {
+      e.preventDefault();
+    }
+  });
 
   document.getElementById("chat-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    sendMessage(document.getElementById("chat-input").value);
+    sendMessage(chatInput.value);
   });
 
   document.getElementById("chat-new").addEventListener("click", () => {
@@ -242,6 +252,7 @@
     document.getElementById("chat-thread").innerHTML = "";
     const emptyEl = document.getElementById("chat-empty");
     if (emptyEl) emptyEl.style.display = "";
+    document.getElementById("chat-new").hidden = true;
     renderExamples();
     document.getElementById("chat-input").focus();
   });

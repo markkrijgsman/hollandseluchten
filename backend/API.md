@@ -6,10 +6,14 @@ Air-pollution (PM2.5) answers for residents, with an audit trail. Interactive do
 |---|---|
 | `GET /geocode?q=` | Place or address to lat/lon candidates (PDOK Locatieserver) |
 | `GET /coverage` | Date range and station counts of the data |
+| `GET /guidelines` | Norm values (`who`, `who_daily`, `euNow`, `eu2030`) from `config/guidelines.toml` |
 | `GET /stations?lat&lon&radius_km` | Nearby stations and the period they have data |
 | `GET /pm25?lat&lon&date` | Distance-weighted (1/d², floor 0.5 km) daily mean PM2.5 (µg/m³) with uncertainty |
 | `GET /pm25/timeseries?lat&lon&from&to&resolution=day\|hour` | The same per day (max 366 days) or hour (max 31 days) |
-| `GET /pm25/compare?lat&lon&from&to&against=who\|eu` | Compare with reference levels from `config/guidelines.toml` |
+| `GET /pm25/compare?lat&lon&from&to&against=who\|eu\|eu2030` | Compare with reference levels from `config/guidelines.toml` |
+| `GET /pm25/weekday?lat&lon&from&to` | Weekday (Mon–Fri) vs. weekend (Sat–Sun) PM2.5 comparison |
+| `GET /pm25/trend?lat&lon&from&to` | Linear OLS PM2.5 trend (`slope_ug_m3_per_day`: improving / stable / worsening) |
+| `GET /pm25/events?lat&lon&from&to&threshold=15` | Days exceeding a PM2.5 threshold (default 15 µg/m³) |
 | `POST /chat {message, history}` | Plain-language question; an LLM calls the endpoints above |
 
 Every analysis response contains `considerations`, an `audit` list of steps, the resolved `request` and a `reproduce`
@@ -55,7 +59,7 @@ The model only picks tools and words the answer; all numbers come from the tools
 It is a LangChain agent (`langchain.agents.create_agent`, on LangGraph) whose tools are the endpoints above
 (`chat/tools.py`). The tool result goes to the model without audit; the full result goes to the client.
 
-* It uses OpenAI (`HL_CHAT_MODEL`, default `gpt-4o`) and needs `OPENAI_API_KEY`; without it `/chat` answers 503.
+* It supports OpenAI (`OPENAI_API_KEY`, default `gpt-4o`) or Google Gemini (`GEMINI_API_KEY`, via Google AI Studio's OpenAI-compatible endpoint); without either key `/chat` answers 503.
 * The tests use a rule-based stand-in (`tests/fake_llm.py`, `tests/fake_chat_model.py`). It is not a language model and is not part of the app.
 * Any other LangChain chat model works: return it from `get_chat_model` in `chat/models.py`.
 

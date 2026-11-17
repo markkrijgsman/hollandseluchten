@@ -4,8 +4,10 @@ from __future__ import annotations
 from datetime import date as Date
 from datetime import timedelta
 from pathlib import Path
+from threading import Lock
 
 import pandas as pd
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from ..analysis.geo import NL_LAT, NL_LON
@@ -25,19 +27,23 @@ class ReferenceRepository:
         self.measurements = measurements
         self.stations = pd.read_csv(metadata)
         self._stations: pd.DataFrame | None = None
+        self._lock = Lock()
 
     def pm25_stations(self) -> pd.DataFrame:
         """Stations with PM2.5 data: id, name, lat, lon, types, first/last hour (date) and number of hourly values."""
         if self._stations is None:
-            t = pq.read_table(self.measurements, columns=["meetlocatie_id", "begindatumtijd", "waarde"],
-                              filters=[("component", "==", "PM2.5")]).to_pandas().dropna(subset=["waarde"])
-            g = t.groupby("meetlocatie_id")["begindatumtijd"].agg(data_from="min", data_to="max", hourly_values="size")
-            g["data_from"], g["data_to"] = g["data_from"].str[:10], g["data_to"].str[:10]
-            meta = self.stations.rename(columns={
-                "meetlocatie_id": "station", "meetlocatie_naam": "name", "breedtegraad": "lat",
-                "lengtegraad": "lon", "stationstype": "station_type", "gebiedstype": "area_type"})
-            self._stations = g.rename_axis("station").reset_index().merge(
-                meta[["station", "name", "lat", "lon", "station_type", "area_type"]], on="station", how="inner")
+            with self._lock:
+                if self._stations is None:
+                    t = pq.read_table(self.measurements, columns=["meetlocatie_id", "begindatumtijd", "waarde"],
+                                      filters=[("component", "==", "PM2.5")]).to_pandas().dropna(subset=["waarde"])
+                    g = t.groupby("meetlocatie_id", observed=True)["begindatumtijd"].agg(
+                        data_from="min", data_to="max", hourly_values="size")
+                    g["data_from"], g["data_to"] = g["data_from"].str[:10], g["data_to"].str[:10]
+                    meta = self.stations.rename(columns={
+                        "meetlocatie_id": "station", "meetlocatie_naam": "name", "breedtegraad": "lat",
+                        "lengtegraad": "lon", "stationstype": "station_type", "gebiedstype": "area_type"})
+                    self._stations = g.rename_axis("station").reset_index().merge(
+                        meta[["station", "name", "lat", "lon", "station_type", "area_type"]], on="station", how="inner")
         return self._stations
 
     @property
@@ -77,24 +83,45 @@ class SensorRepository:
         self.path = path
         self._range: tuple[str, str] | None = None
         self._stations: pd.DataFrame | None = None
+        self._lock = Lock()
 
     def kit_stations(self) -> pd.DataFrame:
         """Kits with calibrated PM2.5: id, name, lat, lon, first/last day (UTC+1) and number of hourly-ish values."""
         if self._stations is None:
-            t = _with_valid_position(pq.read_table(
-                self.path, columns=["kit_id", "timestamp_from", "pm25_kal", "latitude", "longitude"]).to_pandas())
-            t["day"] = (pd.to_datetime(t["timestamp_from"], utc=True) + FIXED_TZ_OFFSET).dt.strftime("%Y-%m-%d")
-            g = t.groupby("kit_id").agg(data_from=("day", "min"), data_to=("day", "max"),
-                                        lat=("latitude", "median"), lon=("longitude", "median"))
-            self._stations = g.rename_axis("station").reset_index().assign(name=lambda d: d["station"])
+            with self._lock:
+                if self._stations is None:
+                    cache = self.path.with_name(f".{self.path.name}.{self.path.stat().st_size}.kits.parquet")
+                    if cache.exists():
+                        self._stations = pd.read_parquet(cache)
+                    else:
+                        t = _with_valid_position(pq.read_table(
+                            self.path, columns=["kit_id", "timestamp_from", "pm25_kal", "latitude", "longitude"]).to_pandas())
+                        g = t.groupby("kit_id", observed=True).agg(
+                            ts_min=("timestamp_from", "min"),
+                            ts_max=("timestamp_from", "max"),
+                            lat=("latitude", "median"),
+                            lon=("longitude", "median"),
+                        )
+                        g["data_from"] = (pd.to_datetime(g["ts_min"], utc=True) + FIXED_TZ_OFFSET).dt.strftime("%Y-%m-%d")
+                        g["data_to"] = (pd.to_datetime(g["ts_max"], utc=True) + FIXED_TZ_OFFSET).dt.strftime("%Y-%m-%d")
+                        g = g.drop(columns=["ts_min", "ts_max"])
+                        self._stations = g.rename_axis("station").reset_index().assign(name=lambda d: d["station"])
+                        try:
+                            self._stations.to_parquet(cache, index=False)
+                        except OSError:
+                            pass
         return self._stations
 
     @property
     def date_range(self) -> tuple[str, str]:
         if self._range is None:
-            col = pq.read_table(self.path, columns=["timestamp_from"]).column(0).to_pandas()
-            self._range = ((col.min() + FIXED_TZ_OFFSET).date().isoformat(),
-                           (col.max() + FIXED_TZ_OFFSET).date().isoformat())
+            with self._lock:
+                if self._range is None:
+                    col = pq.read_table(self.path, columns=["timestamp_from"]).column(0)
+                    mm = pc.min_max(col).as_py()
+                    lo = (pd.Timestamp(mm["min"]) + FIXED_TZ_OFFSET).date().isoformat()
+                    hi = (pd.Timestamp(mm["max"]) + FIXED_TZ_OFFSET).date().isoformat()
+                    self._range = (lo, hi)
         return self._range
 
     def hourly(self, day: Date) -> pd.DataFrame:

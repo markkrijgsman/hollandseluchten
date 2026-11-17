@@ -14,27 +14,29 @@
 
   let DATE_MIN = "2020-01-01"; // overschreven door /coverage zodra de backend antwoordt
   let DATE_MAX = "2026-09-30";
-  const state = { lookup: null, period: "month", customRange: null, backendDate: null, backendBundle: null };
+  const state = { lookup: null, period: "month", customRange: null, backendDate: null, backendBundle: null, loadingLive: false, reqSeq: 0 };
   let leafletMap = null;
 
   const CHROME = {
+    "brand.sub": ["Voor mensen die om hun lucht geven", "For people who care for their air"],
     "nav.address": ["Check mijn plek", "Check my spot"],
     "nav.ask": ["Stel een vraag", "Ask a question"],
+    "nav.presentation": ["Presentatie", "Presentation"],
     title: ["Moet ik me zorgen maken over de lucht hier?", "Should I be concerned about the air here?"],
     subtitle: [
       "Ontdek in één oogopslag hoe schoon de lucht vandaag en op de lange termijn is op jouw plek.",
       "See at a glance how clean the air is today and in the long run at your location.",
     ],
-    "form.locate": ["Gebruik mijn locatie", "Use my location"],
+    "form.locate": ["Mijn locatie", "My location"],
     "form.or": ["of", "or"],
     "form.postcode": ["Postcode of plaats", "Postcode or place"],
-    "form.number": ["Huisnr. (optioneel)", "House no. (optional)"],
-    "form.submit": ["Zoek op", "Look up"],
+    "form.number": ["Huisnr.", "No."],
+    "form.submit": ["Check", "Check"],
     "form.privacy": [
-      "Je locatie of postcode wordt alleen gebruikt om het dichtstbijzijnde meetpunt te vinden en wordt nooit opgeslagen.",
-      "Your location or postcode is only used to find the nearest monitoring station and is never stored.",
+      "Alleen gebruikt om het dichtstbijzijnde meetpunt te vinden · nooit opgeslagen.",
+      "Only used to find the nearest monitoring point · never stored.",
     ],
-    "form.try": ["Of kies een voorbeeld:", "Or try an example:"],
+    "form.try": ["Voorbeeld:", "Try:"],
     "form.period": ["Periode:", "Period:"],
     "form.rangeFrom": ["Van", "From"],
     "form.rangeTo": ["Tot en met", "To (inclusive)"],
@@ -254,17 +256,26 @@
   function dataSourceBadge(r) {
     if (r && r.fromBackend && r.backend && !r.backend.fromEmbeddedParquet) {
       const date = r.backend.latestDate || "";
+      const hasSensors = r.backend.pm25 && r.backend.pm25.basis === "sensors";
+      const label = hasSensors
+        ? t(`Live burger- & Luchtmeetnet-data · ${date}`, `Live citizen & Luchtmeetnet data · ${date}`)
+        : t(`Live data · Luchtmeetnet & Hollandse Luchten API · ${date}`, `Live data · Luchtmeetnet & Hollandse Luchten API · ${date}`);
       return `<p class="data-source-badge data-source-live" role="status">
-        <span aria-hidden="true">●</span> ${esc(t(`Live meetdata van Luchtmeetnet API · ${date}`, `Live data from Luchtmeetnet API · ${date}`))}
+        <span aria-hidden="true">●</span> ${esc(label)}
+      </p>`;
+    }
+    if (state.loadingLive) {
+      return `<p class="data-source-badge data-source-sync" role="status">
+        <span aria-hidden="true">↻</span> ${esc(t("Live sensordata ophalen…", "Syncing live sensor data…"))}
       </p>`;
     }
     if (r && r.fromBackend && r.backend && r.backend.fromEmbeddedParquet) {
       return `<p class="data-source-badge data-source-embedded" role="status">
-        <span aria-hidden="true">◑</span> ${esc(t("Ingebedde dataset (backend niet bereikbaar)", "Embedded dataset (backend offline)"))}
+        <span aria-hidden="true">◑</span> ${esc(t("Offline referentieset", "Offline reference dataset"))}
       </p>`;
     }
     return `<p class="data-source-badge data-source-demo" role="status">
-      <span aria-hidden="true">○</span> ${esc(t("Demodata (geen backend)", "Demo data (no backend)"))}
+      <span aria-hidden="true">○</span> ${esc(t("Lokale dataset", "Local dataset"))}
     </p>`;
   }
 
@@ -288,30 +299,34 @@
   function verdictCard(lk, r, apiRes) {
     const p = lk.place;
     const where = [p.buurt, p.wijk].filter(Boolean).join(", ");
-    const livePm = apiRes && apiRes.ok && apiRes.data ? apiRes.data.pm25 : null;
+    const livePm = apiRes && apiRes.ok && apiRes.data ? apiRes.data.pm25 : (r && r.latest ? r.latest.value : null);
     const ix = r && !r.tooFar ? r.index : livePm != null ? D.lki(livePm) : D.lki(10);
     const v = concernVerdict(ix, r, p.label);
 
     const g = r && !r.tooFar ? r.grade : livePm != null ? D.grade(livePm) : D.grade(10);
-    const refStations = apiRes && apiRes.ok && apiRes.data && apiRes.data.reference && apiRes.data.reference.stations || [];
-    const nearText = r && !r.tooFar
-      ? `${esc(r.near.s.naam)} (${fmt(r.near.km)} km)`
-      : refStations.length
-        ? refStations.map(s => `${esc(s.name)} (${fmt(s.distance_km)} km)`).join(", ")
-        : esc(r && r.near ? `${r.near.s.naam} (${fmt(r.near.km)} km)` : "Luchtmeetnet");
-    const nearLabel = refStations.length > 1
-      ? t(`${refStations.length} meetstations gebruikt`, `${refStations.length} monitoring stations used`)
+    const usedSt = (apiRes && apiRes.ok && apiRes.data && ((apiRes.data.sensors && apiRes.data.sensors.stations) || (apiRes.data.reference && apiRes.data.reference.stations))) || [];
+    const primaryNear = usedSt[0]
+      ? `${esc(usedSt[0].name.trim())} (${fmt(usedSt[0].distance_km)} km)`
+      : r && r.near
+        ? `${esc(r.near.s.naam)} (${fmt(r.near.km)} km)`
+        : "Luchtmeetnet";
+    const nearLabel = usedSt.length > 1
+      ? t(`+${usedSt.length - 1} andere meetpunten gewogen`, `+${usedSt.length - 1} other points weighted`)
       : t("Dichtstbijzijnde meetpunt", "Nearest monitoring point");
 
     const q = r && !r.tooFar
-      ? t(`Wat is de gemiddelde luchtkwaliteit in ${r.near.s.buurt}?`, `What is the average air quality in ${r.near.s.buurt}?`)
+      ? t(`Wat is de gemiddelde luchtkwaliteit bij ${p.label}?`, `What is the average air quality at ${p.label}?`)
       : t("Hoe verhouden onze sensoren zich tot het officiële meetstation?", "How do our sensors compare with the official monitoring station?");
+
+    const todaySub = livePm != null
+      ? `${fmt(livePm)} µg/m³ · ${t("RIVM 1–11", "RIVM 1–11")}`
+      : t("RIVM-schaal 1 (schoon) t/m 11", "RIVM scale 1 (clean) to 11");
 
     return `<section class="card verdict-card" style="--status-color:${v.statusColor};--status-bg:${v.statusBg}">
       <div class="verdict-top">
         <div class="location-tag">
           <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M10 2a6 6 0 0 0-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 0 0-6-6zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" fill="currentColor"/></svg>
-          <b>${esc(p.label)}</b>${where ? ` · <span>${esc(where)}</span>` : ""}
+          <b>${esc(p.label)}</b>${where ? `<span class="where-sub"> · ${esc(where)}</span>` : ""}
         </div>
         <span class="status-pill"><i class="status-dot" aria-hidden="true"></i>${esc(v.pill)}</span>
       </div>
@@ -326,11 +341,11 @@
           <div class="fact-value">
             ${ix ? `<span class="fact-badge" style="--c:${ix.cls.color};--fg:${ix.cls.fg || "#fff"}">${ix.n}</span><span>${esc(clsName(ix.cls))}</span>` : "–"}
           </div>
-          <span class="fact-sub">${esc(t("RIVM-schaal 1 (schoon) t/m 11", "RIVM scale 1 (clean) to 11"))}</span>
+          <span class="fact-sub">${esc(todaySub)}</span>
         </div>
 
         <div class="fact-box">
-          <span class="fact-label">${esc(t("Lange termijn (jaargemiddelde)", "Long-term (annual average)"))}</span>
+          <span class="fact-label">${esc(t("Jaargemiddelde", "Annual average"))}</span>
           <div class="fact-value">
             <span class="fact-badge" style="--c:${g.color};--fg:${g.fg || "#fff"}">${g.grade}</span>
             <span>${esc(r && !r.tooFar ? `${fmt(r.mean)} µg/m³` : livePm != null ? `${fmt(livePm)} µg/m³` : g.grade)}</span>
@@ -338,17 +353,17 @@
           <span class="fact-sub">${esc(gradeText(g))}</span>
         </div>
 
+        ${r && r.trend ? `<div class="fact-box">
+          <span class="fact-label">${esc(t("Trend (1 jaar)", "1-yr Trend"))}</span>
+          <div class="fact-value">${trendPill(r.trend)}</div>
+          <span class="fact-sub">${esc(t("Afgelopen 12 maanden", "Past 12 months"))}</span>
+        </div>` : ""}
+
         <div class="fact-box">
           <span class="fact-label">${esc(t("Gemeten bij", "Measured at"))}</span>
-          <div class="fact-value"><span>${nearText}</span></div>
+          <div class="fact-value fact-station"><span>${primaryNear}</span></div>
           <span class="fact-sub">${esc(nearLabel)}</span>
         </div>
-
-        ${r && r.trend ? `<div class="fact-box">
-          <span class="fact-label">${esc(t("Trend (afgelopen jaar)", "Trend (past year)"))}</span>
-          <div class="fact-value">${trendPill(r.trend)}</div>
-          <span class="fact-sub">${esc(t("Op basis van Luchtmeetnet-metingen", "Based on Luchtmeetnet measurements"))}</span>
-        </div>` : ""}
       </div>
 
       ${mapWidgetHtml()}
@@ -356,8 +371,8 @@
       ${lk.offline ? `<p class="notice">${esc(t("Geen verbinding met PDOK: je adres is bij benadering bepaald op je postcode.", "No connection to PDOK: your address was approximated from your postcode."))}</p>` : ""}
 
       <div class="verdict-actions">
-        <span class="muted">${esc(t("Wil je zelf een vraag stellen over de metingen?", "Want to ask your own question about the measurements?"))}</span>
-        <a class="btn-outline" href="/gesprek/?q=${encodeURIComponent(q)}">${esc(t("Stel een vraag →", "Ask a question →"))}</a>
+        <span class="muted">${esc(t("Vraag over houtrook, verkeer of jouw straat?", "Question about wood smoke, traffic, or your street?"))}</span>
+        <a class="btn-outline btn-sm" href="/gesprek/?q=${encodeURIComponent(q)}">${esc(t("Stel een vraag →", "Ask a question →"))}</a>
       </div>
     </section>`;
   }
@@ -441,10 +456,23 @@
     const heartSvg = `<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" class="health-heart" focusable="false"><path d="M10 17.5S2 12 2 7a4.5 4.5 0 0 1 8-2.83A4.5 4.5 0 0 1 18 7c0 5-8 10.5-8 10.5z" fill="currentColor"/></svg>`;
 
     return `<section class="card health-card" aria-label="${esc(t("Luchtkwaliteit en je gezondheid", "Air Quality & Your Health"))}">
-      <div class="health-card-title">
-        ${heartSvg}
-        <h2>${esc(t("Luchtkwaliteit & je gezondheid", "Air Quality & Your Health"))}</h2>
+      <div class="health-card-header">
+        <div class="health-card-title">
+          ${heartSvg}
+          <h2>${esc(t("Luchtkwaliteit & je gezondheid", "Air Quality & Your Health"))}</h2>
+        </div>
+        <label class="health-period-wrap muted small" for="health-period">
+          <span>${esc(t("Periode:", "Period:"))}</span>
+          <select id="health-period" class="select select-compact" aria-label="${esc(t("Periode", "Period"))}">
+            <option value="week"${state.period === "week" ? " selected" : ""}>${esc(t("Afgelopen 7 dagen", "Last 7 days"))}</option>
+            <option value="month"${state.period === "month" ? " selected" : ""}>${esc(t("Afgelopen 30 dagen", "Last 30 days"))}</option>
+            <option value="quarter"${state.period === "quarter" ? " selected" : ""}>${esc(t("Afgelopen 3 maanden", "Last 3 months"))}</option>
+            <option value="year"${state.period === "year" ? " selected" : ""}>${esc(t("Heel jaar (365d)", "Full year (365d)"))}</option>
+            <option value="custom"${state.period === "custom" ? " selected" : ""}>${esc(t("Eigen periode…", "Custom period…"))}</option>
+          </select>
+        </label>
       </div>
+      ${hasRange && state.period === "custom" ? customRangeFields(r) : ""}
 
       <div class="health-concentration">
         <span class="health-value" style="color:${fillColor}">${fmt(displayValue)}</span>
@@ -1018,6 +1046,35 @@
   function bind(audit, lk, r) {
     initMap(lk, r);
     const periodEl = document.getElementById("period");
+    const healthPeriodEl = document.getElementById("health-period");
+    const handlePeriodChange = async (newPeriod) => {
+      state.period = newPeriod;
+      renderSearchPeriodSelect();
+      if (state.period === "custom") {
+        if (!state.customRange && r && r.period) state.customRange = { from: r.period.start, to: r.period.end };
+        if (state.customRange) D.setCustomRange(state.customRange.from, state.customRange.to);
+      }
+      if (state.backendBundle && state.backendBundle.ok && state.lookup) {
+        const { lat, lon } = state.lookup.place;
+        const tsRes = await D.fetchBackendTimeseries(
+          lat,
+          lon,
+          state.backendBundle.latestDate,
+          state.period,
+          state.backendBundle.radiusKm || 5
+        );
+        if (tsRes.ok) {
+          state.backendBundle.timeseries = tsRes.data;
+          state.backendBundle.timeseriesRange = tsRes.range;
+        }
+      }
+      const y = window.scrollY;
+      render();
+      window.scrollTo(0, y);
+    };
+    if (healthPeriodEl) {
+      healthPeriodEl.addEventListener("change", (e) => handlePeriodChange(e.target.value));
+    }
     const rangeForm = document.getElementById("custom-range");
     if (rangeForm) {
       rangeForm.addEventListener("submit", async (e) => {
@@ -1044,7 +1101,7 @@
         state.backendDate = to;
         if (state.lookup) {
           const { lat, lon } = state.lookup.place;
-          state.backendBundle = await D.fetchBackendBundle(lat, lon, to, "custom", 15);
+          state.backendBundle = await D.fetchBackendBundle(lat, lon, to, "custom", 5);
         }
         const y = window.scrollY;
         render();
@@ -1052,32 +1109,7 @@
       });
     }
     if (periodEl) {
-      periodEl.addEventListener("change", async (e) => {
-        state.period = e.target.value;
-        renderSearchPeriodSelect();
-        if (state.period === "custom") {
-          // Begin met de periode die al getoond werd, zodat de datums meteen kloppen.
-          if (!state.customRange && r && r.period) state.customRange = { from: r.period.start, to: r.period.end };
-          if (state.customRange) D.setCustomRange(state.customRange.from, state.customRange.to);
-        }
-        if (state.backendBundle && state.backendBundle.ok && state.lookup) {
-          const { lat, lon } = state.lookup.place;
-          const tsRes = await D.fetchBackendTimeseries(
-            lat,
-            lon,
-            state.backendBundle.latestDate,
-            state.period,
-            state.backendBundle.radiusKm
-          );
-          if (tsRes.ok) {
-            state.backendBundle.timeseries = tsRes.data;
-            state.backendBundle.timeseriesRange = tsRes.range;
-          }
-        }
-        const y = window.scrollY;
-        render();
-        window.scrollTo(0, y);
-      });
+      periodEl.addEventListener("change", (e) => handlePeriodChange(e.target.value));
     }
     const backendDateEl = document.getElementById("backend-date");
     if (backendDateEl) {
@@ -1118,9 +1150,21 @@
   }
 
   async function refreshWithPlace(res) {
+    const seq = ++state.reqSeq;
     state.lookup = res;
-    state.backendBundle = await D.fetchBackendBundle(res.place.lat, res.place.lon, state.backendDate, state.period, 15);
+    state.loadingLive = true;
+    const instant = D.computeRealDataBundle(res.place.lat, res.place.lon, state.backendDate, state.period, 15);
+    if (instant && instant.ok) {
+      state.backendBundle = instant;
+    }
     render();
+    const live = await D.fetchBackendBundle(res.place.lat, res.place.lon, state.backendDate, state.period, 5);
+    if (seq !== state.reqSeq) return;
+    state.loadingLive = false;
+    state.backendBundle = live;
+    const y = window.scrollY;
+    render();
+    window.scrollTo(0, y);
   }
 
   async function submit(postcode, number) {
@@ -1191,14 +1235,18 @@
   }
 
   function applyChrome() {
-    document.title = t("Hoe is de lucht op mijn adres? · Hollandse Luchten", "How is the air at my address? · Hollandse Luchten");
+    I.sync();
+    document.title = t(
+      "LuchtZorg — Voor mensen die om hun lucht geven",
+      "LuchtZorg — For people who care for their air"
+    );
     document.querySelectorAll("[data-i18n]").forEach((el) => {
       const pair = CHROME[el.dataset.i18n];
       if (pair) el.textContent = t(pair[0], pair[1]);
     });
     document.getElementById("foot").textContent = t(
-      "Hollandse Luchten · Burgerwetenschap voor gezonde lucht in Noord-Holland.",
-      "Hollandse Luchten · Citizen science for healthy air in Noord-Holland."
+      "LuchtZorg · Voor mensen die om hun lucht geven — gebouwd op open data van Hollandse Luchten & RIVM.",
+      "LuchtZorg · For people who care for their air — powered by Hollandse Luchten & RIVM open data."
     );
   }
 
@@ -1227,11 +1275,6 @@
       submit(b.dataset.pc, b.dataset.nr || "");
     })
   );
-  document.querySelectorAll(".lang-toggle button").forEach((b) =>
-    b.addEventListener("click", () => {
-      if (b.dataset.lang !== I.lang) I.set(b.dataset.lang);
-    })
-  );
   I.onChange(() => {
     applyChrome();
     renderSearchPeriodSelect();
@@ -1241,30 +1284,43 @@
   applyChrome();
   renderSearchPeriodSelect();
   bindSearchPeriod();
+  start();
   D.loadBackendConfig().then(({ range }) => {
     if (range) [DATE_MIN, DATE_MAX] = [range.from, range.to];
-    start();
   });
 
   function start() {
-  const params0 = new URLSearchParams(window.location.search);
-  if (params0.get("postcode")) {
-    document.getElementById("postcode").value = params0.get("postcode");
-    document.getElementById("number").value = params0.get("nr") || "";
-    submit(params0.get("postcode"), params0.get("nr") || "");
-  } else if (params0.get("lat") && params0.get("lon")) {
-    const lat = Number(params0.get("lat"));
-    const lon = Number(params0.get("lon"));
-    if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
-      D.reverseGeocode(lat, lon).then((place) =>
-        refreshWithPlace({ postcode: place.postcode || "", house: { number: "", letter: "" }, place, fromGeolocation: true })
-      );
+    const params0 = new URLSearchParams(window.location.search);
+    if (params0.get("postcode")) {
+      document.getElementById("postcode").value = params0.get("postcode");
+      document.getElementById("number").value = params0.get("nr") || "";
+      submit(params0.get("postcode"), params0.get("nr") || "");
+    } else if (params0.get("lat") && params0.get("lon")) {
+      const lat = Number(params0.get("lat"));
+      const lon = Number(params0.get("lon"));
+      if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+        D.reverseGeocode(lat, lon).then((place) =>
+          refreshWithPlace({ postcode: place.postcode || "", house: { number: "", letter: "" }, place, fromGeolocation: true })
+        );
+      }
+    } else {
+      // Render Grote Markt 2, Haarlem immediately (0ms paint) and hydrate with live API
+      document.getElementById("postcode").value = "2011 RD";
+      document.getElementById("number").value = "2";
+      refreshWithPlace({
+        postcode: "2011RD",
+        house: { number: 2, letter: "" },
+        place: {
+          label: "Grote Markt 2, 2011RD Haarlem",
+          postcode: "2011RD",
+          gemeente: "Haarlem",
+          wijk: "Oude Stad",
+          buurt: "Centrum",
+          lat: 52.38139,
+          lon: 4.6350,
+          source: "pdok",
+        },
+      });
     }
-  } else {
-    // Show a welcoming default example right away so citizens immediately see how simple it is
-    document.getElementById("postcode").value = "2011 RD";
-    document.getElementById("number").value = "2";
-    submit("2011RD", "2");
-  }
   }
 })();

@@ -5,7 +5,7 @@ FROM python:3.11-slim-bookworm
 # R from Debian, with the two packages r/analysis.R uses (as Debian packages: no compiling). git is only used to
 # clone Analyse-Together and to record its commit in the audit trail.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates git r-base-core r-cran-dplyr r-cran-jsonlite \
+    && apt-get install -y --no-install-recommends ca-certificates curl git r-base-core r-cran-dplyr r-cran-jsonlite \
     && rm -rf /var/lib/apt/lists/*
 
 # The validated R functions, sourced at runtime (GPL-3, never copied into this repository). The default branch is
@@ -24,11 +24,18 @@ COPY config ./config
 COPY r ./r
 RUN pip install --no-cache-dir -e ".[chat]"
 
-# The data folder: clone reference measurements during build so the container is self-contained in Cloud Run
-RUN mkdir -p /data && git clone --depth 1 https://github.com/provincieNH/HackathonHollandseLuchten.git /data/HackathonHollandseLuchten
+# The data folder: clone reference measurements and fetch Zenodo citizen sensor parquet during build
+# so the container is completely self-contained in Cloud Run (in docker-compose, hl-data volume mounts over /data).
+RUN mkdir -p /data \
+    && git clone --depth 1 https://github.com/provincieNH/HackathonHollandseLuchten.git /data/HackathonHollandseLuchten \
+    && curl --fail --location --silent --show-error \
+         "https://zenodo.org/records/23762846/files/data_sensors.parquet?download=1" \
+         -o /data/HackathonHollandseLuchten/data/data_sensors.parquet \
+    && echo "9bbbd14b42af5daa071300ce28e72cb7  /data/HackathonHollandseLuchten/data/data_sensors.parquet" | md5sum -c -
 
 ENV HL_ANALYSE_TOGETHER_DIR=/opt/Analyse-Together \
     HL_DATA_DIR=/data/HackathonHollandseLuchten/data
+RUN python -c "from app.main import get_service; s=get_service(); s.reference.pm25_stations(); s.sensors.kit_stations(); _=s.sensors.date_range"
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s \
     CMD python -c "import os, urllib.request as u; port=os.environ.get('PORT', '8000'); u.urlopen(f'http://localhost:{port}/guidelines', timeout=4)"

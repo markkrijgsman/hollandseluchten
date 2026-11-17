@@ -3,28 +3,34 @@
     {
       "site": "luchtzorg",
       "public": "frontend",
-      "ignore": [
-        "firebase.json",
-        "**/.*",
-        "**/node_modules/**"
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "headers": [
+        {
+          "source": "**/*.@(html|css|js)",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache, must-revalidate" }]
+        }
       ]
     },
     {
       "site": "hollandse-luchten-analyse",
       "public": "frontend",
-      "ignore": [
-        "firebase.json",
-        "**/.*",
-        "**/node_modules/**"
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "headers": [
+        {
+          "source": "**/*.@(html|css|js)",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache, must-revalidate" }]
+        }
       ]
     },
     {
       "site": "sample-bumps-firebase-ai-app",
       "public": "frontend",
-      "ignore": [
-        "firebase.json",
-        "**/.*",
-        "**/node_modules/**"
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "headers": [
+        {
+          "source": "**/*.@(html|css|js)",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache, must-revalidate" }]
+        }
       ]
     }
   ]

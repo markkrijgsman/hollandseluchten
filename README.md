@@ -1,96 +1,152 @@
-# Hollandse Luchten
+# LuchtZorg — Hollandse Luchten Hackathon (Challenge 3)
 
-## Quick start with Docker (no R, Python or git setup needed)
+> **For people who care for their air** — Helping residents of Noord-Holland explore, question, and understand local PM2.5 air quality in everyday language, backed by RIVM’s validated *Samen Analyseren* R functions and a complete, reproducible audit trail.
 
-```bash
-docker compose up --build     # first run builds the images and downloads the data (about 150 MB)
-```
-
-Then open http://localhost:8080 (address check), http://localhost:8080/gesprek/ (chat) or http://localhost:8000/docs
-(API). The containers bring their own R, Python and the Analyse-Together R functions; the data is downloaded into a
-Docker volume on the first run. For the chat, put `OPENAI_API_KEY=...` in a `.env` file (see `.env.example`); without
-it everything works except `/chat`, which answers 503. Stop with `docker compose down` (add `-v` to also delete the
-downloaded data).
-
-## Developer Quick Start (without Docker)
-
-Requires git, Python 3.11+ and R. If you don't want to install those, use the Docker route above.
-
-```bash
-./setup.sh      # once: clones the other repos, installs R packages + backend environment, downloads the
-                # sensor data from Zenodo (80 MB; --no-sensors to skip), checks everything works
-```
-
-- **Frontend (Zero-build HTML/CSS/JS)**: See **[frontend/README.md](frontend/README.md)**
-  ```bash
-  python3 -m http.server 8080 --bind 127.0.0.1 --directory frontend
-  # Open http://localhost:8080/ (address check) or http://localhost:8080/gesprek/ (chat)
-  ```
-- **Backend (FastAPI + R/Parquet REST API on port 8000)**: See **[backend/API.md](backend/API.md)**
-  > **The backend needs R and a clone of [Analyse-Together](https://github.com/rivm-syso/Analyse-Together) next to this
-  > repo.** The calculations call the validated R functions from that repo; there is no Python substitute. Without R or
-  > the clone, every analysis endpoint answers `503` ("R is not installed" / "Analyse-Together checkout not found").
-  > Easiest: `docker compose up --build` (see above). Without Docker, one call sets everything up (clones both repos
-  > next to this one, installs the R packages and the Python environment, downloads and checks the data):
-  > `./setup.sh`. Details: [backend/API.md](backend/API.md).
-- **Live Public Demo**: [https://hollandse-luchten-analyse.web.app/adres.html](https://hollandse-luchten-analyse.web.app/adres.html)
+- **Live Web App (Address Check)**: [https://luchtzorg.web.app/](https://luchtzorg.web.app/)
+- **Live Conversational Analyst (`/gesprek/`)**: [https://luchtzorg.web.app/gesprek/](https://luchtzorg.web.app/gesprek/)
+- **Live Pitch Deck**: [https://luchtzorg.web.app/presentation.html](https://luchtzorg.web.app/presentation.html)
+- **Live Backend OpenAPI / Swagger Docs**: [https://luchtzorg-backend-103343530026.europe-west4.run.app/docs](https://luchtzorg-backend-103343530026.europe-west4.run.app/docs)
 
 ---
 
-[Who is who?](https://gemini.google.com/app/d9a55ca4bfe6de50)
-* [Luchtmeetnet](https://www.luchtmeetnet.nl): het officiële meetnetwerk van het RIVM met dure sensoren
-* [Samen Meten](https://www.samenmeten.nl): verzamelt data afkomstig van goedkopere consumentensensoren
-* [SODAQ](https://knowyourair.net): bedrijf dat (mobiele) fijnstofmeters maakt
-* [Hollandse Luchten](https://hollandse-luchten.org): 
-  * Koopt en distribueert apparatuur onder burgers
-  * Grote toeleverancier van meetdata voor het Samen Meten-platform 
+## Hackathon Deliverables Index
 
-## [Tools](https://hollandse-luchten.org/tools)
+| Deliverable | Location in Repository |
+|---|---|
+| **1. Self-contained local setup & codebase** | This `README.md`, [`docker-compose.yml`](docker-compose.yml), [`setup.sh`](setup.sh), [`backend/`](backend/), [`frontend/`](frontend/) |
+| **2. Jury pitch presentation (max 5 min)** | [`docs/LuchtZorg_Presentation.pdf`](docs/LuchtZorg_Presentation.pdf) (offline PDF) & [`frontend/presentation.html`](frontend/presentation.html) (interactive deck) |
+| **3. Concrete end-to-end Challenge 3 example** | [`docs/deliverable-example-end-to-end.md`](docs/deliverable-example-end-to-end.md) — real resident question + follow-up, audit trail, *Samen Analyseren* R calls & reproduction URLs |
+| **4. Methodological choices & considerations** | [`docs/deliverable-methodology.md`](docs/deliverable-methodology.md) (rules config: [`backend/config/considerations.toml`](backend/config/considerations.toml)) |
+| **5. Validation, reference comparison & limitations** | [`docs/deliverable-validation.md`](docs/deliverable-validation.md) (reproducible script: [`scripts/validate_approach.py`](scripts/validate_approach.py), metrics: [`docs/validation_metrics.json`](docs/validation_metrics.json)) |
 
-### [1. Samen Analyseren Tool](https://analyseren.samenmeten.nl/)
-Web UI voor het downloaden en analyseren van Samen Meten sensordata.
-Deze sensordata kan gecombineerd worden met referentiemeetdata van het Landelijk Luchtmeetnet en met de weergegevens van het KNMI.
-Uitgangspunt van sensordata van Samen Meten is dat het burgerwetenschap is en geen officiele meting.
+---
 
-Gedownloade data bevat ruwe én gekalibreerde data.
-De kalibratie van sensordata wordt gedaan met behulp van secundaire data die niet altijd beschikbaar zijn. 
-Het kan daarom voorkomen dat voor sommige tijdsperioden geen gekalibreerde waarden in de database aanwezig zijn.
+## Quick Start: Run Locally From Scratch
 
-In de Samen Analyseren Tool kun je het verschil tussen ruwe en gekalibreerde sensormetingen zien als een lichtgekleurde band om de meetwaardes heen.
-Er blijft een meetonzekerheid over voor de gekalibreerde waardes, bijvoorbeeld omdat alle sensoren een klein beetje anders reageren op de hoeveelheid fijnstof in de lucht.
-De meetonzekerheid van een sensor is geschat op 20% van de meetwaarde. Als de meetwaardes heel laag zijn wordt 20% daarvan ook heel klein, daarom hebben we ook een minimale onzekerheid geschat van 5,3 μg/m³ voor pm2,5 en 8,5 μg/m³ voor pm10.
+You can run the complete stack from scratch either **with Docker** (recommended — nothing else to install) or **natively** (Python 3.11+ and R 4.x).
 
-Zie ook [samen-analyseren-tool.txt](docs/samen-analyseren-tool.txt) voor meer details
+### Option A: One-Command Docker Setup (Recommended)
 
-Een uitgebreide handleiding is [hier](https://www.samenmeten.nl/dataportaal/samen-analyseren-tool) te vinden.
-Uitgebreide uitleg kalibratie is [hier](https://www.samenmeten.nl/dataportaal/kalibratie-van-fijnstofsensoren) te vinden.
+Requires only **Docker Desktop** (or Docker Engine + Compose). No local R, Python, or manual data downloads are needed.
 
-### [2. Samen Meten API](https://www.samenmeten.nl/dataportaal/api-application-programming-interface)
+```bash
+git clone https://github.com/markkrijgsman/hollandseluchten.git
+cd hollandseluchten
 
-https://www.samenmeten.nl/dataportaal
+# Optional: enable the /chat conversational assistant with an OpenAI or Google Gemini API key
+cp .env.example .env
+# Edit .env and set OPENAI_API_KEY=... or GEMINI_API_KEY=...
 
-* **Things:** hiermee worden fysieke objecten bedoeld. In ons geval de complete meetsystemen. Verwarrend is dat wij dat meestal de sensor noemen.
-* **Sensors:** het specifieke meetapparaat dat iets bepaalds (PM10, NO2, Temperatuur) meet. Een Thing kan dus meerdere Sensors bevatten.
-* **Observations:** de meetwaarde gemeten door een bepaalde Sensor in een bepaald Thing op een bepaalde tijd.
+docker compose up --build
+```
 
-**Links:**
-* [API](https://api-samenmeten.rivm.nl/v1.0)
-* [API reference docs](https://gost1.docs.apiary.io/#reference/0/root/get-sensorthings-resource-endpoints)
+What happens on first startup:
+1. `data-init` clones the official `HackathonHollandseLuchten` reference dataset (`reference_measurements.parquet`, 77 Luchtmeetnet stations, 2020–Sep 2026) and downloads + MD5-verifies the Zenodo `data_sensors.parquet` citizen sensor archive (507 kits, ~80 MB) into a persistent Docker volume (`hl-data`).
+2. `backend` builds Python 3.11 + R (`dplyr`, `jsonlite`) + a runtime checkout of RIVM’s [`Analyse-Together`](https://github.com/rivm-syso/Analyse-Together) repository and serves the REST + `/chat` API on **http://localhost:8000** (Swagger UI at **http://localhost:8000/docs**).
+3. `frontend` serves the zero-build web application on **http://localhost:8080**.
 
-samenmeten.rivm.nl is verplaatst naar samenmeten.nl
+Open in your browser:
+- **Address Check & Audit Drawer**: [http://localhost:8080/](http://localhost:8080/)
+- **Conversational AI Analyst**: [http://localhost:8080/gesprek/](http://localhost:8080/gesprek/)
+- **Pitch Deck**: [http://localhost:8080/presentation.html](http://localhost:8080/presentation.html)
+- **Interactive API Docs (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### 3. Luchtmeetnet 
+> **Without an LLM API key:** All deterministic endpoints (`/geocode`, `/coverage`, `/guidelines`, `/stations`, `/pm25`, `/pm25/timeseries`, `/pm25/compare`, `/pm25/weekday`, `/pm25/trend`, `/pm25/events`) and the entire Address Check UI work 100% without any API key; only `POST /chat` requires `OPENAI_API_KEY` or `GEMINI_API_KEY` (returning HTTP `503` otherwise).
 
-**Links:**
-* https://www.luchtmeetnet.nl/informatie/download-data/open-data
-* https://api-docs.luchtmeetnet.nl/
+Stop containers with `docker compose down` (add `-v` to also remove the downloaded data volume).
 
-### [4. Hollandse Luchten Realtime tool](https://samenmeten.rivm.nl/hollandseluchten/)
-Hiermee kun je data plotten en downloaden van individuele sensoren. 
-De API lijkt me handiger.
+---
 
-### [5. GCN Tool](https://apps.rivm.nl/sla/gcn-tool/)
-Meer data vanuit RIVM, niet per se downloadbaar of met een API?
+### Option B: Native Setup (Without Docker)
 
-## Links
-* https://github.com/markkrijgsman/hollandseluchten
+Requires `git`, **Python 3.11+**, and **R 4.x** (`brew install r` on macOS; `sudo apt install r-base` on Ubuntu/Debian).
+
+```bash
+git clone https://github.com/markkrijgsman/hollandseluchten.git
+cd hollandseluchten
+
+# Clones Analyse-Together & HackathonHollandseLuchten as sibling directories,
+# installs R packages (dplyr, jsonlite) + backend/.venv, downloads & verifies Zenodo sensor data,
+# and runs an end-to-end R bridge smoke test:
+./setup.sh            # pass --no-sensors to skip the 80 MB Zenodo sensor archive
+```
+
+Then in two terminals:
+
+```bash
+# Terminal 1 — FastAPI + R Backend (port 8000)
+cd backend
+export OPENAI_API_KEY=...   # or export GEMINI_API_KEY=... (only needed for POST /chat)
+.venv/bin/uvicorn app.main:app --reload --port 8000
+```
+
+```bash
+# Terminal 2 — Zero-build Static Frontend (port 8080)
+python3 -m http.server 8080 --bind 127.0.0.1 --directory frontend
+```
+
+### Run Automated Tests & Reproducible Validation
+
+```bash
+# Unit & integration test suite (~12 s; uses synthetic + R bridge fixtures)
+cd backend && .venv/bin/pytest
+
+# Reproducible LOOCV + co-located sensor vs. reference validation on the real Parquet datasets
+cd .. && backend/.venv/bin/python scripts/validate_approach.py
+```
+
+---
+
+## Architecture Overview
+
+```text
+hollandseluchten/
+├── frontend/                   # Zero-build vanilla HTML/CSS/JS progressive web client
+│   ├── index.html              # Instant address health verdict + progressive-disclosure audit drawers
+│   ├── gesprek/index.html      # Multi-turn Dutch/English conversational interface (POST /chat)
+│   ├── over/ · hollandse-luchten/ · tools/ · contact/  # About, ecosystem apps directory & contact pages
+│   ├── presentation.html       # Responsive 4-slide jury pitch deck (desktop + mobile swipe)
+│   └── js/                     # nav.js, api.js, address.js, chat.js, charts.js, i18n.js
+├── backend/                    # FastAPI + LangGraph agent + R bridge (see backend/API.md)
+│   ├── app/
+│   │   ├── main.py             # Deterministic REST endpoints + POST /chat
+│   │   ├── analysis/           # Shared pipeline: station selection -> R bridge -> 1/d² weighting -> considerations
+│   │   ├── chat/               # Stateless tool-calling LLM agent (never computes numbers itself)
+│   │   ├── data/               # Fixed UTC+1 Parquet/CSV repositories (Luchtmeetnet + Zenodo HoLu kits)
+│   │   ├── integrations/       # r_bridge.py (Rscript subprocess) & pdok.py (PDOK Locatieserver geocoder)
+│   │   └── tools/              # Single registry & Pydantic schemas shared by REST and LLM tool-calling
+│   ├── r/analysis.R            # Sources RIVM's Analyse-Together (add_ref_kal, cutoff < 100, sensor uncertainty)
+│   ├── config/                 # Declarative guidelines.toml (WHO/EU) & considerations.toml (26 provenance rules)
+│   └── tests/                  # 7 pytest suites covering IDW, calibration, considerations, API & chat
+├── scripts/
+│   ├── fetch-sensors.sh        # Downloads & MD5-verifies Zenodo data_sensors.parquet (record 23762846)
+│   └── validate_approach.py    # Reproducible LOOCV & co-located sensor-vs-reference validation benchmark
+└── docs/                       # Hackathon deliverables, presentation PDF & validation metrics
+```
+
+Key architectural guarantees (detailed in [`docs/deliverable-methodology.md`](docs/deliverable-methodology.md)):
+- **Zero Numerical Hallucinations**: In `POST /chat`, the LLM only selects typed tools and summarizes tool outputs; every PM2.5 concentration, exceedance count, trend slope, and uncertainty bound is computed deterministically by the backend and returned alongside `interpretation` (every tool call) and `reproduce` URLs.
+- **Validated RIVM Science at Runtime**: `backend/r/analysis.R` sources `funs/data_to_tool_fun.R` directly from a sibling checkout of RIVM’s GPL-3 [`Analyse-Together`](https://github.com/rivm-syso/Analyse-Together) repository (`add_ref_kal`, `< 100 µg/m³` outlier cut-off, `add_uncertainty_sensor_percent` with $\max(20\%, 5.3\text{ }\mu\text{g/m}^3)$) and logs the exact Git commit in every response’s `versions` audit step.
+- **Explicit Provenance (`origin`)**: Every dynamic caveat in `considerations` states whether the underlying rule comes from `analyse-together`, `this-api` (our own spatial/completeness thresholds), or `config` (WHO/EU norm definitions).
+
+---
+
+## Disclosure of Generative AI & Tool Usage
+
+In accordance with the Challenge 3 guidelines on transparent disclosure of generative AI:
+
+1. **Runtime AI inside LuchtZorg (`POST /chat` only)**:
+   - **Where used**: Translating natural-language resident questions (Dutch/English) into structured tool calls (`geocode`, `stations`, `pm25`, `pm25_compare`, `pm25_weekday`, `pm25_trend`, `pm25_events`, `pm25_timeseries`) and phrasing the tool’s structured JSON output and `caution`/`warning` considerations in accessible language (`temperature=0`, via OpenAI `gpt-4o` or Google `gemini-3.5-flash-lite` / `gemini-3.8-flash`).
+   - **Where NOT used**: The LLM never performs arithmetic, data filtering, outlier removal, calibration, spatial interpolation, or norm comparison. The Address Check interface (`/` and `/adres.html`) and all `GET` REST endpoints run **100% deterministically with zero LLM involvement**.
+2. **Development-Time AI Coding Assistants**:
+   - **Where used**: AI coding assistants (Claude Code / Google Antigravity) were used during the hackathon to accelerate FastAPI boilerplate, vanilla HTML/CSS/Canvas frontend UI and pitch-deck layout, Docker/Cloud Run configuration, and markdown documentation structuring.
+   - **Human design & verification**: Problem framing, architectural separation between LLM tool-calling and deterministic R execution, direct GPL-3 runtime sourcing of RIVM’s `Analyse-Together` R functions, the $1/d^2$ ($0.5\text{ km}$ floor) weighting and conservative correlated-uncertainty formulation, the 26 declarative consideration rules, the 7 automated `pytest` suites, and the quantitative Leave-One-Out / co-location validation benchmarks against Luchtmeetnet stations were designed, audited, and empirically verified by the team.
+
+---
+
+## External Data & Domain References
+
+- **Official Reference Network**: [Luchtmeetnet Open Data (RIVM / GGD Amsterdam / Provincie Noord-Holland)](https://data.rivm.nl/data/luchtmeetnet/)
+- **Citizen Sensor Archive**: [Five years of Hollandse Luchten sensor data (Zenodo record 23762846)](https://zenodo.org/records/23762846) & [Samen Meten Portal](https://www.samenmeten.nl/)
+- **Validated Analysis Codebase**: [RIVM `Analyse-Together` (*Samen Analyseren Tool*, GPL-3)](https://github.com/rivm-syso/Analyse-Together)
+- **Geocoding**: [Kadaster / PDOK Locatieserver API](https://api.pdok.nl/)

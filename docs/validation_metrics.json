@@ -1,0 +1,262 @@
+{
+  "parameters": {
+    "outlier_cutoff_ug_m3": 100.0,
+    "min_valid_hours_per_day": 18,
+    "idw_power": 2,
+    "idw_distance_floor_km": 0.5,
+    "sensor_uncertainty_formula": "max(20% of value, 5.3 ug/m3)"
+  },
+  "dataset_audit": {
+    "reference": {
+      "stations": 77,
+      "date_from": "2020-01-01",
+      "date_to": "2026-09-30",
+      "hourly_rows": 3130549,
+      "outliers_ge_100": 605,
+      "outliers_ge_100_pct": 0.0193,
+      "outliers_on_new_years_pct_of_outliers": 86.1,
+      "station_days_total": 132340,
+      "station_days_ge_18h": 130604,
+      "station_days_excluded_lt_18h_pct": 1.31
+    },
+    "sensors": {
+      "kits_in_nl": 507,
+      "date_from": "2020-01-01",
+      "date_to": "2026-01-01",
+      "raw_rows_in_nl": 5652900,
+      "kal_rows_in_nl": 5568556,
+      "calibration_availability_pct": 98.5,
+      "raw_outliers_ge_100": 81119,
+      "raw_outliers_ge_100_pct": 1.435,
+      "kal_outliers_ge_100": 79024,
+      "kal_outliers_ge_100_pct": 1.419,
+      "kit_days_total": 240611,
+      "kit_days_ge_18h": 225931,
+      "kit_days_excluded_lt_18h_pct": 6.1
+    }
+  },
+  "loocv_reference_stations_2025_2026": {
+    "radius_5km": {
+      "overall": {
+        "n": 16751,
+        "mae": 1.49,
+        "rmse": 2.08,
+        "bias": -0.09,
+        "r2": 0.928,
+        "pearson_r": 0.964
+      },
+      "coverage_pct_of_station_days": 59.6,
+      "by_station_type": {
+        "achtergrond": {
+          "n": 6735,
+          "mae": 1.47,
+          "rmse": 1.96,
+          "bias": 0.19,
+          "r2": 0.936,
+          "pearson_r": 0.968
+        },
+        "verkeer": {
+          "n": 6404,
+          "mae": 1.48,
+          "rmse": 1.99,
+          "bias": -0.44,
+          "r2": 0.932,
+          "pearson_r": 0.968
+        },
+        "industrie": {
+          "n": 3612,
+          "mae": 1.53,
+          "rmse": 2.4,
+          "bias": 0.01,
+          "r2": 0.907,
+          "pearson_r": 0.953
+        }
+      },
+      "by_nearest_neighbor_distance": {
+        "le_2km": {
+          "n": 8077,
+          "mae": 1.61,
+          "rmse": 2.2,
+          "bias": -0.17,
+          "r2": 0.92,
+          "pearson_r": 0.96
+        },
+        "2_to_5km": {
+          "n": 8674,
+          "mae": 1.37,
+          "rmse": 1.96,
+          "bias": -0.02,
+          "r2": 0.936,
+          "pearson_r": 0.968
+        }
+      }
+    },
+    "radius_15km": {
+      "overall": {
+        "n": 20383,
+        "mae": 1.46,
+        "rmse": 2.02,
+        "bias": 0.02,
+        "r2": 0.932,
+        "pearson_r": 0.966
+      },
+      "coverage_pct_of_station_days": 72.5,
+      "by_station_type": {
+        "achtergrond": {
+          "n": 8986,
+          "mae": 1.44,
+          "rmse": 1.92,
+          "bias": 0.45,
+          "r2": 0.939,
+          "pearson_r": 0.971
+        },
+        "verkeer": {
+          "n": 7420,
+          "mae": 1.46,
+          "rmse": 1.98,
+          "bias": -0.45,
+          "r2": 0.932,
+          "pearson_r": 0.968
+        },
+        "industrie": {
+          "n": 3977,
+          "mae": 1.49,
+          "rmse": 2.32,
+          "bias": -0.08,
+          "r2": 0.915,
+          "pearson_r": 0.957
+        }
+      },
+      "by_nearest_neighbor_distance": {
+        "le_2km": {
+          "n": 8077,
+          "mae": 1.6,
+          "rmse": 2.19,
+          "bias": -0.16,
+          "r2": 0.92,
+          "pearson_r": 0.96
+        },
+        "2_to_5km": {
+          "n": 8674,
+          "mae": 1.33,
+          "rmse": 1.91,
+          "bias": 0.04,
+          "r2": 0.939,
+          "pearson_r": 0.969
+        },
+        "5_to_15km": {
+          "n": 3632,
+          "mae": 1.44,
+          "rmse": 1.9,
+          "bias": 0.36,
+          "r2": 0.94,
+          "pearson_r": 0.971
+        }
+      }
+    }
+  },
+  "citizen_sensors_vs_reference_2020_2025": {
+    "co_located_kits_le_1_5km": 223,
+    "reference_stations_matched": [
+      "Amsterdam-Hoogtij",
+      "Amsterdam-Stadhouderskade",
+      "Amsterdam-Van Diemenstraat",
+      "Amsterdam-Vondelpark",
+      "Badhoevedorp-Sloterweg",
+      "Beverwijk West-Creutzberglaan",
+      "Haarlem-Freddie Oversteegenstraat ",
+      "IJmuiden-Kanaaldijk",
+      "Veldhoven-Europalaan",
+      "Velsen-Reijndersweg",
+      "Velsen-Staalstraat",
+      "Wijk aan Zee-Bosweg",
+      "Wijk aan Zee-Burgemeester Rothestraat",
+      "Zaandam-Wagenschotpad"
+    ],
+    "paired_kit_days": 85883,
+    "single_kit_raw_lt_100": {
+      "n": 85858,
+      "mae": 5.31,
+      "rmse": 8.09,
+      "bias": 1.1,
+      "r2": -0.719,
+      "pearson_r": 0.693
+    },
+    "single_kit_calibrated_pm25_kal": {
+      "n": 85883,
+      "mae": 4.23,
+      "rmse": 7.31,
+      "bias": 1.01,
+      "r2": -0.402,
+      "pearson_r": 0.656
+    },
+    "multi_sensor_idw_ge_3_kits_le_2_5km": {
+      "n": 11914,
+      "mae": 3.17,
+      "rmse": 4.97,
+      "bias": 1.11,
+      "r2": 0.354,
+      "pearson_r": 0.794,
+      "uncertainty_coverage_pct": 84.6
+    },
+    "uncertainty_band_coverage_single_kit_pct": 77.3,
+    "by_concentration_regime_calibrated": {
+      "ref_lt_10_ug_m3": {
+        "n": 55912,
+        "mae": 3.03,
+        "rmse": 5.78,
+        "bias": 0.96,
+        "r2": -6.553,
+        "pearson_r": 0.268,
+        "mean_relative_error_pct": 55.4
+      },
+      "ref_ge_10_ug_m3": {
+        "n": 29971,
+        "mae": 6.48,
+        "rmse": 9.52,
+        "bias": 1.09,
+        "r2": -1.261,
+        "pearson_r": 0.588,
+        "mean_relative_error_pct": 40.8
+      }
+    },
+    "by_humidity_regime": {
+      "rh_gt_80_pct": {
+        "raw": {
+          "n": 15073,
+          "mae": 6.56,
+          "rmse": 9.63,
+          "bias": 4.05,
+          "r2": -1.158,
+          "pearson_r": 0.77
+        },
+        "calibrated": {
+          "n": 15073,
+          "mae": 4.71,
+          "rmse": 7.49,
+          "bias": 2.58,
+          "r2": -0.305,
+          "pearson_r": 0.774
+        }
+      },
+      "rh_le_80_pct": {
+        "raw": {
+          "n": 70785,
+          "mae": 5.04,
+          "rmse": 7.72,
+          "bias": 0.48,
+          "r2": -0.615,
+          "pearson_r": 0.674
+        },
+        "calibrated": {
+          "n": 70785,
+          "mae": 4.12,
+          "rmse": 7.2,
+          "bias": 0.66,
+          "r2": -0.406,
+          "pearson_r": 0.627
+        }
+      }
+    }
+  }
+}

@@ -64,19 +64,23 @@ If `localhost:8000` is **not** running (or when hosted publicly on Firebase/GitH
 
 ```text
 frontend/
-├── index.html          # Address check: verdict card + progressive disclosure drawers, map, charts
-├── gesprek/index.html  # Chat page (POST /chat)
-├── app.css, styles.css # Styling
+├── index.html                   # Address check: verdict card + progressive disclosure drawers, map, charts
+├── gesprek/index.html           # Conversational analyst page (POST /chat)
+├── over/index.html              # About LuchtZorg (mission & zero-hallucination science)
+├── hollandse-luchten/index.html # About Hollandse Luchten citizen-science network
+├── tools/index.html             # Directory of related Dutch air-quality apps & open portals
+├── contact/index.html           # Contact, GitHub & open API links
+├── presentation.html            # Responsive 4-slide jury pitch deck
+├── app.css, styles.css          # LuchtZorg design system & responsive mobile styles
 └── js/
-    ├── api.js          # The only place that talks to the backend: base URL, GET helper, time-outs, and the
-    │                   #   translation of the API's typed `audit` steps and `considerations` for display
-    ├── address.js      # Address lookup (PDOK), backend bundle (/pm25, /compare, /timeseries, /trend, /events),
-    │                   #   offline fallback on real-data.js, norms (/guidelines) and date range (/coverage)
-    ├── address-page.js # UI controller for index.html
-    ├── chat.js         # UI controller for the chat page; shows the answer, caution notes and the API calls made
-    ├── real-data.js    # Embedded snapshot of the reference data (offline mode only)
-    ├── mock-data.js, analysis.js, charts.js  # Haarlem sensor mock-up, helpers and Canvas charts
-    └── i18n.js         # NL/EN translations and the chat's example questions
+    ├── nav.js                   # Shared LuchtZorg AppBar, native Popover hamburger menu & NL/EN switcher
+    ├── api.js                   # Backend client + typed `audit` & `considerations` translator
+    ├── address.js               # Address lookup (PDOK), backend bundle (/pm25, /compare, /timeseries, /trend, /events)
+    ├── address-page.js          # UI controller for index.html
+    ├── chat.js                  # UI controller for /gesprek/
+    ├── real-data.js             # Embedded snapshot of reference data (offline fallback)
+    ├── mock-data.js, analysis.js, charts.js  # Helpers and SVG/Canvas charts
+    └── i18n.js                  # Auto-detected NL/EN bilingual state (persisted in localStorage)
 ```
 
 The pages show what the backend returns instead of computing it: audit steps are read by `code`
@@ -104,10 +108,11 @@ import duckdb, json, csv
 
 ## 5. Deploying to Firebase Hosting
 
-The public live demo is hosted on Firebase project `sample-bumps-firebase-ai-app` at:
+The public live demo is hosted on Firebase Hosting at:
 
-- [https://hollandse-luchten-analyse.web.app/adres.html](https://hollandse-luchten-analyse.web.app/adres.html)
-- [https://hollandse-luchten-analyse.web.app/index.html](https://hollandse-luchten-analyse.web.app/index.html)
+- **Address Check**: [https://luchtzorg.web.app/](https://luchtzorg.web.app/) (or `/adres.html`)
+- **Conversational Analyst**: [https://luchtzorg.web.app/gesprek/](https://luchtzorg.web.app/gesprek/)
+- **Pitch Deck**: [https://luchtzorg.web.app/presentation.html](https://luchtzorg.web.app/presentation.html)
 
 ### First-Time Setup (Once per Laptop)
 

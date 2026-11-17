@@ -46,14 +46,32 @@ def is_error(text: str) -> bool:
     return text.startswith(ERROR_PREFIXES)
 
 
+ALLOWED_SCHEMA_KEYS = {"type", "properties", "items", "required", "description", "enum"}
+
+
+def _clean_schema(node: dict) -> dict:
+    """Keep only JSON Schema keys accepted by both OpenAI and Gemini's OpenAI-compatible endpoint."""
+    out = {k: v for k, v in node.items() if k in ALLOWED_SCHEMA_KEYS}
+    if "default" in node and "description" in out:
+        out["description"] = f"{out['description']} (default: {node['default']})"
+    elif "default" in node:
+        out["description"] = f"Default: {node['default']}"
+    if "properties" in out:
+        out["properties"] = {k: _clean_schema(v) for k, v in out["properties"].items()}
+    if "items" in out and isinstance(out["items"], dict):
+        out["items"] = _clean_schema(out["items"])
+    return out
+
+
 def build_tools(service: Pm25Service) -> list[BaseTool]:
     def build(tool: Tool) -> BaseTool:
         def call(**kwargs) -> tuple[str, dict | None]:
             return run_tool(service, tool, kwargs)
 
+        schema = _clean_schema(tool.model.model_json_schema(by_alias=True))
         return StructuredTool(
             name=tool.name, description=tool.description, func=call, response_format="content_and_artifact",
-            # a JSON schema (with the 'from'/'to' aliases) goes to the model; validation happens in run_tool
-            args_schema=tool.model.model_json_schema(by_alias=True))
+            # cleaned JSON schema (with 'from'/'to' aliases) goes to the model; full validation happens in run_tool
+            args_schema=schema)
 
     return [build(t) for t in TOOLS.values()]

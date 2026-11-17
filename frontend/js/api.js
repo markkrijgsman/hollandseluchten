@@ -29,7 +29,7 @@
       .join("&");
 
   // Een jaar over 15 km duurt op de backend ongeveer 10 s (R + parquet): ruime time-outs.
-  const TIMEOUT = { quick: 8000, series: 30000, year: 40000 };
+  const TIMEOUT = { quick: 25000, series: 35000, year: 45000 };
 
   async function get(path, params = {}, timeoutMs = TIMEOUT.quick) {
     const query = qs(params);

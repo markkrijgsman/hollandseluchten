@@ -41,7 +41,7 @@
   // Normen en datumbereik komen van de backend (/guidelines uit config/guidelines.toml, /coverage);
   // bij geen backend blijven de standaardwaarden hierboven en het bereik van de ingebedde dataset.
   async function loadBackendConfig() {
-    const [norms, cov] = await Promise.all([window.Api.get("/guidelines", {}, 3000), window.Api.get("/coverage", {}, 3000)]);
+    const [norms, cov] = await Promise.all([window.Api.get("/guidelines", {}, 8000), window.Api.get("/coverage", {}, 8000)]);
     if (norms.ok) {
       const d = norms.data;
       Object.assign(NORMS, { who: d.who, eu2030: d.eu2030, euNow: d.euNow, whoDay: d.who_daily });
@@ -591,15 +591,19 @@
     return { ...res, range: rng };
   }
 
-  async function fetchBackendBundle(lat, lon, customDate = null, periodKey = "month", radiusKm = 15) {
-    // 1. Vraag eerst nabije stations op via GET /stations
+  async function fetchBackendBundle(lat, lon, customDate = null, periodKey = "month", radiusKm = 5) {
+    // 1. Vraag eerst nabije stations op via GET /stations (5 km buurt-standaard; schaal op naar 15 -> 25 km in landelijk gebied)
     let stRes = await apiGet(`/stations?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&radius_km=${encodeURIComponent(radiusKm)}`);
+    if (stRes.ok && (!stRes.data.stations || stRes.data.stations.length === 0) && radiusKm < 15) {
+      radiusKm = 15;
+      stRes = await apiGet(`/stations?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&radius_km=${encodeURIComponent(radiusKm)}`);
+    }
     if (stRes.ok && (!stRes.data.stations || stRes.data.stations.length === 0) && radiusKm < 25) {
       radiusKm = 25;
       stRes = await apiGet(`/stations?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&radius_km=${encodeURIComponent(radiusKm)}`);
     }
     if (!stRes.ok) {
-      const realBundle = computeRealDataBundle(lat, lon, customDate, periodKey, radiusKm);
+      const realBundle = computeRealDataBundle(lat, lon, customDate, periodKey, 15);
       if (realBundle && realBundle.ok) return realBundle;
       return stRes;
     }
@@ -609,18 +613,20 @@
       return { ok: false, status: 404, url: stRes.url, error: "Geen meetstations binnen 25 km gevonden." };
     }
 
-    // Kies de meest recente datum waarop het dichtstbijzijnde station data heeft
-    const latestDate = customDate || stations[0].data_to || "2026-09-15";
+    // Kies de meest recente datum waarop nabije stations data hebben
+    const maxDataTo = stations.map((s) => s.data_to).filter(Boolean).sort().pop();
+    let latestDate = customDate || maxDataTo || "2026-09-15";
 
     // Voor de jaargemiddelde/WHO-toets kiezen we een volledig jaar (365 dagen)
     const yearStation = stations.find((s) => s.data_from <= "2025-01-01" && s.data_to >= "2025-12-31") || stations[0];
-    const yearEnd = yearStation.data_to || latestDate;
-    const yearStart = shiftDate(yearEnd, -364) < (yearStation.data_from || "2020-01-01")
-      ? (yearStation.data_from || "2025-01-01")
+    const yearEnd = maxDataTo || yearStation.data_to || latestDate;
+    const minDataFrom = stations.map((s) => s.data_from).filter(Boolean).sort()[0] || "2020-01-01";
+    const yearStart = shiftDate(yearEnd, -364) < minDataFrom
+      ? minDataFrom
       : shiftDate(yearEnd, -364);
 
     // 2. Haal parallel op: /pm25 (dagwaarde), /pm25/compare (WHO + EU), /pm25/timeseries, /pm25/trend, /pm25/events
-    const [pmRes, whoRes, euRes, tsRes, trendRes, eventsRes] = await Promise.all([
+    let [pmRes, whoRes, euRes, tsRes, trendRes, eventsRes] = await Promise.all([
       fetchBackendPm25(lat, lon, latestDate, radiusKm),
       apiGet(`/pm25/compare?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(yearStart)}&to=${encodeURIComponent(yearEnd)}&radius_km=${encodeURIComponent(radiusKm)}&against=who`, window.Api.TIMEOUT.year),
       apiGet(`/pm25/compare?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&from=${encodeURIComponent(yearStart)}&to=${encodeURIComponent(yearEnd)}&radius_km=${encodeURIComponent(radiusKm)}&against=eu`, window.Api.TIMEOUT.year),
@@ -628,6 +634,16 @@
       fetchTrend(lat, lon, yearStart, yearEnd, radiusKm),
       fetchEvents(lat, lon, yearStart, yearEnd, radiusKm),
     ]);
+
+    // Als de laatste dag minder dan 18 uur had (bijv. UTC+1 middernachtgrens zoals 2026-01-01), pak de vorige volledige dag
+    if (!customDate && !pmRes.ok && pmRes.status === 404) {
+      const prevDate = shiftDate(latestDate, -1);
+      const retryPm = await fetchBackendPm25(lat, lon, prevDate, radiusKm);
+      if (retryPm.ok) {
+        pmRes = retryPm;
+        latestDate = prevDate;
+      }
+    }
 
     return {
       ok: pmRes.ok || whoRes.ok,
@@ -943,6 +959,7 @@
     fetchBackendPm25,
     fetchBackendTimeseries,
     fetchBackendBundle,
+    computeRealDataBundle,
     fetchTrend,
     fetchEvents,
     buildResultFromBackend,

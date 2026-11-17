@@ -46,7 +46,9 @@ def _load_history(history: list[dict]) -> list[BaseMessage]:
 
 def _text(message: BaseMessage) -> str:
     c = message.content
-    return c if isinstance(c, str) else "".join(b.get("text", "") for b in c if isinstance(b, dict))
+    if isinstance(c, str):
+        return c
+    return "".join(b.get("text", "") for b in c if isinstance(b, dict) and b.get("type") != "thinking")
 
 
 def chat(service: Pm25Service, model: BaseChatModel, req: ChatRequest) -> dict:
@@ -86,7 +88,7 @@ def chat(service: Pm25Service, model: BaseChatModel, req: ChatRequest) -> dict:
         "clarifying_question": answer if finished and not results and not interpretation else None,
         "interpretation": interpretation, "results": results,
         "suggestions": _suggestions(called),
-        "llm": getattr(model, "model_name", None) or type(model).__name__,
+        "llm": getattr(model, "model_name", None) or getattr(model, "model", None) or type(model).__name__,
         "history": messages_to_dict([_without_artifact(m) for m in messages]),
     }
 

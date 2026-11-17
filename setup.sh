@@ -97,6 +97,6 @@ Setup complete.
   Start the frontend:  python3 -m http.server 8080 --directory $REPO/frontend
   Run the tests:       cd $BACKEND && .venv/bin/pytest
 
-  Chat needs an OpenAI key:  export OPENAI_API_KEY=...   (without it /chat answers 503)
+  Chat needs an API key:  export OPENAI_API_KEY=...  or  export GEMINI_API_KEY=...   (without it /chat answers 503)
   No R or Python on this machine? 'docker compose up --build' runs everything in containers instead.
 DONE
