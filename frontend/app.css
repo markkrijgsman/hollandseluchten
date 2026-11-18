@@ -341,7 +341,38 @@ th { color: var(--muted); font-weight: 600; font-size: 0.78rem; }
 .threshold { stroke: var(--bad); stroke-dasharray: 6 4; stroke-width: 1.5; }
 .threshold-label { fill: var(--bad); font-size: 11px; font-weight: 600; }
 
-.foot { max-width: 840px; margin: 0 auto; padding: 0 20px 32px; }
+.foot { max-width: 840px; margin: 0 auto; padding: 6px 20px 32px; }
+.app-disclaimer {
+  background: #f3f4f6;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 0.77rem;
+  line-height: 1.48;
+  color: var(--muted);
+}
+.app-disclaimer strong { color: var(--ink); font-weight: 700; }
+.menu-proto-pill {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff8de;
+  color: #7a5c00;
+  border: 1px solid #f0df99;
+  margin-bottom: 5px;
+}
+.menu-proto-note {
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
 
 .data-source-badge {
   display: inline-flex; align-items: center; gap: 6px;

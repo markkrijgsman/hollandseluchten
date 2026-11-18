@@ -1244,10 +1244,6 @@
       const pair = CHROME[el.dataset.i18n];
       if (pair) el.textContent = t(pair[0], pair[1]);
     });
-    document.getElementById("foot").textContent = t(
-      "LuchtZorg · Voor mensen die om hun lucht geven — gebouwd op open data van Hollandse Luchten & RIVM.",
-      "LuchtZorg · For people who care for their air — powered by Hollandse Luchten & RIVM open data."
-    );
   }
 
   ["postcode", "number"].forEach((id) => {

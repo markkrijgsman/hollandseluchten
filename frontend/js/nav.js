@@ -89,7 +89,9 @@
           </div>
 
           <div class="menu-brand-box">
+            <span class="menu-proto-pill" data-lz-i18n="protoBadge"></span>
             <p class="menu-brand-desc" data-lz-i18n="menuDesc"></p>
+            <p class="menu-proto-note" data-lz-i18n="menuDisclaimer"></p>
           </div>
 
           <div class="menu-section-label" data-lz-i18n="secApp"></div>
@@ -223,13 +225,41 @@
     if (new URLSearchParams(window.location.search).get("menu") === "1") {
       requestAnimationFrame(() => openDrawer());
     }
+
+    let foot = document.querySelector("footer.foot");
+    if (!foot) {
+      foot = document.createElement("footer");
+      foot.className = "foot muted small";
+      document.body.appendChild(foot);
+    }
+    foot.removeAttribute("data-nl");
+    foot.removeAttribute("data-en");
+    foot.innerHTML = `
+      <div class="app-disclaimer" role="note">
+        <strong data-lz-i18n="discTitle"></strong>
+        <span data-lz-i18n="discBody"></span>
+      </div>
+    `;
   }
 
   const STRINGS = {
     brandSub: ["Voor mensen die om hun lucht geven", "For people who care for their air"],
+    protoBadge: ["Hackathon-prototype", "Hackathon prototype"],
     menuDesc: [
-      "Lokale fijnstofinzichten (PM2.5) in begrijpelijke taal, gebouwd op burgersensoren van Hollandse Luchten en gevalideerde RIVM-rekensoftware.",
-      "Local PM2.5 air-quality insights in plain language, powered by Hollandse Luchten citizen sensors and validated RIVM science.",
+      "Lokale fijnstofinzichten (PM2.5) in begrijpelijke taal, gebouwd op open burgersensoren van Hollandse Luchten, Luchtmeetnet en de Samen Analyseren R-tools van het RIVM.",
+      "Local PM2.5 insights in plain language, built on open Hollandse Luchten citizen sensors, Luchtmeetnet, and RIVM’s Samen Analyseren R tools.",
+    ],
+    menuDisclaimer: [
+      "Indicatieve metingen · geen medisch advies of wettelijke toetsing.",
+      "Indicative data · not medical advice or statutory compliance.",
+    ],
+    discTitle: [
+      "Disclaimer (Hackathon-prototype): ",
+      "Disclaimer (Hackathon prototype): ",
+    ],
+    discBody: [
+      "LuchtZorg is een experimenteel open-source prototype uit de Hollandse Luchten Hackathon. Burgersensoren bieden waardevol lokaal inzicht naast officiële Luchtmeetnet-stations, maar kennen een hogere meetonzekerheid. Alle uitkomsten zijn indicatief en vormen geen medisch advies of formele wettelijke beoordeling.",
+      "LuchtZorg is an experimental open-source prototype created at the Hollandse Luchten Hackathon. Citizen sensors provide valuable local context alongside official Luchtmeetnet stations, but carry higher measurement uncertainty. All results are indicative and do not constitute medical advice or statutory legal assessment.",
     ],
     secApp: ["Ontdek jouw lucht", "Explore your air"],
     secMore: ["Over & Ecosysteem", "About & Ecosystem"],
