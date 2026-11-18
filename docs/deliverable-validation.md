@@ -99,3 +99,16 @@ We disclose six concrete limitations of our current approach:
 4. **Residual High-Humidity Bias ($+2.58\text{ }\mu\text{g/m}^3$ for $\text{RH} > 80\%$)**: Even after RIVM calibration (`pm25_kal`), optical sensors retain a $+2.58\text{ }\mu\text{g/m}^3$ positive bias on foggy/damp days. Cross-checking KNMI humidity (`U > 80%`) as an additional `caution` consideration rule is a natural extension.
 5. **PM2.5 Scope vs. Traffic & Wood-Smoke Questions**: PM2.5 is largely regional/secondary; it cannot isolate a single street’s 30 km/h speed-limit effect (where $\text{NO}_2$ Palmes tubes are appropriate) nor chemically distinguish domestic wood smoke (levoglucosan/black carbon) from background particulate matter, and `pm10_kal` is absent from the Zenodo sensor dataset.
 6. **Sensor Metadata & Relocation Blind Spots**: Citizen sensor kits carry no station-type classification (`verkeer`/`industrie`/`achtergrond`, flagged via `sensor_type_unknown`), and taking a kit’s median GPS coordinate across a range can blur historical relocations if a kit was moved mid-year.
+
+---
+
+## 7. Disclosure of Generative AI & Tool Usage
+
+In accordance with the Challenge 3 guidelines on transparent disclosure of generative AI:
+
+1. **Runtime AI inside LuchtZorg (`POST /chat` only)**:
+   - **Where used**: Translating natural-language resident questions (Dutch/English) into structured tool calls (`geocode`, `stations`, `pm25`, `pm25_compare`, `pm25_weekday`, `pm25_trend`, `pm25_events`, `pm25_timeseries`) and phrasing the tool’s structured JSON output and `caution`/`warning` considerations in accessible everyday language (`temperature=0`, via OpenAI `gpt-4o` or Google `gemini-3.5-flash-lite`).
+   - **Where NOT used**: The LLM never performs arithmetic, data filtering, outlier removal, calibration, spatial interpolation, or norm comparison. The Address Check interface (`/`) and all `GET` REST endpoints run **100% deterministically with zero LLM involvement**.
+2. **Development-Time AI Coding Assistants**:
+   - **Where used**: AI coding assistants (Claude Code / Google Antigravity) were used during the hackathon to accelerate FastAPI boilerplate, vanilla HTML/CSS/SVG frontend UI and pitch-deck layout, Docker/Cloud Run configuration, and documentation formatting.
+   - **Human design & verification**: Problem framing, architectural separation between LLM tool-calling and deterministic R execution, direct GPL-3 runtime sourcing of RIVM’s `Analyse-Together` R functions, the $1/d^2$ ($0.5\text{ km}$ floor) weighting and conservative correlated-uncertainty formulation, the 26 declarative consideration rules, the 7 automated `pytest` suites, and the quantitative Leave-One-Out / co-location validation benchmarks against Luchtmeetnet stations were designed, audited, and empirically verified by the team.

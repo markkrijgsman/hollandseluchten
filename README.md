@@ -15,9 +15,9 @@
 |---|---|
 | **1. Self-contained local setup & codebase** | This `README.md`, [`docker-compose.yml`](docker-compose.yml), [`setup.sh`](setup.sh), [`backend/`](backend/), [`frontend/`](frontend/) |
 | **2. Jury pitch presentation (max 5 min)** | [`docs/LuchtZorg_Presentation.pdf`](docs/LuchtZorg_Presentation.pdf) (offline PDF) & [`frontend/presentation.html`](frontend/presentation.html) (interactive deck) |
-| **3. Concrete end-to-end Challenge 3 example** | [`docs/deliverable-example-end-to-end.md`](docs/deliverable-example-end-to-end.md) — real resident question + follow-up, audit trail, *Samen Analyseren* R calls & reproduction URLs |
-| **4. Methodological choices & considerations** | [`docs/deliverable-methodology.md`](docs/deliverable-methodology.md) (rules config: [`backend/config/considerations.toml`](backend/config/considerations.toml)) |
-| **5. Validation, reference comparison & limitations** | [`docs/deliverable-validation.md`](docs/deliverable-validation.md) (reproducible script: [`scripts/validate_approach.py`](scripts/validate_approach.py), metrics: [`docs/validation_metrics.json`](docs/validation_metrics.json)) |
+| **3. Concrete end-to-end Challenge 3 example** | [`docs/deliverable-example-end-to-end.pdf`](docs/deliverable-example-end-to-end.pdf) & [`.md`](docs/deliverable-example-end-to-end.md) — real resident question + follow-up, audit trail, *Samen Analyseren* R calls & reproduction URLs |
+| **4. Methodological choices & considerations** | [`docs/deliverable-methodology.pdf`](docs/deliverable-methodology.pdf) & [`.md`](docs/deliverable-methodology.md) (rules config: [`backend/config/considerations.toml`](backend/config/considerations.toml)) |
+| **5. Validation, reference comparison & AI disclosure** | [`docs/deliverable-validation.pdf`](docs/deliverable-validation.pdf) & [`.md`](docs/deliverable-validation.md) (reproducible script: [`scripts/validate_approach.py`](scripts/validate_approach.py), metrics: [`docs/validation_metrics.json`](docs/validation_metrics.json)) |
 
 ---
 
