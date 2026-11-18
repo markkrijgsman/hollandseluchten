@@ -7,6 +7,7 @@ __pycache__/
 .DS_Store
 .env
 *.kits.parquet
+frontend/LuchtZorg_Challenge3_Submission.zip
 
 # Exclude local mhtml documentation archives
 *.mhtml
