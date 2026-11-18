@@ -1,6 +1,6 @@
-# Hollandse Luchten — Frontend Setup & Developer Guide
+# LuchtZorg — Frontend Setup & Developer Guide
 
-The frontend is a **zero-build static web application** (vanilla HTML, CSS, and JavaScript). You do **not** need Node.js, npm, Webpack, or Vite to run or edit it on your laptop—any local HTTP server works immediately.
+The frontend is a **zero-build static web application** (vanilla HTML, CSS, and JavaScript). You do **not** need Node.js, npm, Webpack, or Vite to run or edit it locally—any HTTP server works immediately.
 
 ---
 
@@ -12,9 +12,9 @@ From the root of the `hollandseluchten` repository, start a static HTTP server i
 python3 -m http.server 8080 --bind 127.0.0.1 --directory frontend
 ```
 
-Then open either page in your browser:
-- **Address check (primary entry)**: [http://localhost:8080/](http://localhost:8080/)
-- **Chat**: [http://localhost:8080/gesprek/](http://localhost:8080/gesprek/)
+Then open in your browser:
+- **Check my spot (Address Check)**: [http://localhost:8080/](http://localhost:8080/)
+- **Ask a question (Chat)**: [http://localhost:8080/gesprek/](http://localhost:8080/gesprek/)
 - **Pitch Deck (Presentation)**: [http://localhost:8080/presentation.html](http://localhost:8080/presentation.html)
 
 > **Note:** Always serve `frontend/` over `http://localhost` rather than opening `.html` files via `file://` so browser `fetch()` requests and CORS work properly.
@@ -23,40 +23,20 @@ Then open either page in your browser:
 
 ## 2. How Data & Backend Modes Work
 
-The frontend automatically supports **two modes** with zero configuration changes:
+The frontend automatically supports **live REST API** and **offline fallback** modes with zero configuration changes:
 
-### Mode A: Full Local Backend REST API (`http://localhost:8000`)
-**Easiest: Docker.** From the repository root, `docker compose up --build` starts the backend (with R, the
-Analyse-Together functions and the data) on port 8000 and serves this frontend on http://localhost:8080. Nothing else
-needs to be installed. See the root [`README.md`](../README.md).
+### Mode A: Live Backend REST API (`localhost:8000` locally or Cloud Run when hosted)
+**Easiest local setup: Docker.** From the repository root, `docker compose up --build` starts the FastAPI + R backend (with `Analyse-Together`, Luchtmeetnet reference stations, and Zenodo citizen sensor data) on port `8000` and serves this frontend on `http://localhost:8080`. See the root [`README.md`](../README.md).
 
-Without Docker:
+- On `localhost` / `127.0.0.1`, `js/api.js` connects to `http://localhost:8000` by default.
+- On hosted domains (such as `https://luchtzorg.web.app`), `js/api.js` connects to the live Cloud Run backend (`https://luchtzorg-backend-103343530026.europe-west4.run.app`).
+- **Custom API URL override**: Pass `?api=http://127.0.0.1:8000` in the browser URL to point to any backend host.
+- On page load, `/` renders an instant initial card (`0 ms` first paint) and upgrades seamlessly with live `/stations`, `/pm25`, `/pm25/compare`, `/pm25/timeseries`, `/pm25/trend`, and `/pm25/events` results (`5 km` neighbourhood-first radius, auto-expanding to `15 km` → `25 km` in sparser rural areas).
 
-When you also run the FastAPI backend locally on port `8000` (see [`../backend/API.md`](../backend/API.md)). It needs R and a clone of Analyse-Together next to this repo, otherwise the analysis endpoints answer 503 and the frontend falls back to the embedded dataset:
-
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-uvicorn app.main:app --reload --port 8000
-```
-
-- On page load, the frontend probes `http://localhost:8000/geocode` and `http://localhost:8000/stations`.
-- When reachable, the status badge at the top of `adres.html` turns **green**:
-  `Live Luchtmeetnet API (localhost:8000)`
-- All address lookups, coverage checks, $1/d^2$ PM2.5 calculations, 365-day WHO/EU comparisons, time series, and `/chat` questions run directly against the local Python/R backend.
-- **Custom API URL override**: Pass `?api=http://127.0.0.1:8000` in the browser URL to point to a different host or port.
-
-### Mode B: Standalone Mode (No Backend Needed)
-
-If `localhost:8000` is **not** running (or when hosted publicly on Firebase/GitHub Pages):
-
+### Mode B: Offline Fallback Mode (When Backend Is Unreachable)
+If you run `frontend/` on `localhost:8080` without starting the backend:
 - **Geocoding**: Calls the public Dutch government **PDOK Locatieserver API** (`api.pdok.nl`) directly from the browser.
-- **Air Quality Data**: Uses `frontend/js/real-data.js`—an embedded snapshot of the official **Hackathon Hollandse Luchten Parquet dataset** (67 Luchtmeetnet PM2.5 stations, 638 days from `2025-01-01` to `2026-09-30`, filtered with `value < 100.0` and `>= 18 valid hours/day`).
-- **Calculations**: Runs the exact same Haversine distance + $1/d^2$ inverse-distance weighting, 365-day rolling mean, and WHO/EU exceedance counts in JavaScript.
-- The status badge shows:
-  `Echte Luchtmeetnet Parquet-dataset (67 stations · 2025–2026)`
+- **Fallback Reference Data**: Uses `frontend/js/real-data.js` (embedded snapshot of Luchtmeetnet PM2.5 stations, `2025–2026`, `value < 100.0`, `>= 18 valid hours/day`) and clearly labels the result as `Offline reference dataset`.
 
 ---
 
@@ -64,70 +44,36 @@ If `localhost:8000` is **not** running (or when hosted publicly on Firebase/GitH
 
 ```text
 frontend/
-├── index.html                   # Address check: verdict card + progressive disclosure drawers, map, charts
-├── gesprek/index.html           # Conversational analyst page (POST /chat)
-├── over/index.html              # About LuchtZorg (mission & zero-hallucination science)
-├── hollandse-luchten/index.html # About Hollandse Luchten citizen-science network
+├── index.html                   # Check my spot: compact location bar + above-the-fold verdict card, map & audit drawers
+├── gesprek/index.html           # Ask a question: conversational analyst page (POST /chat)
+├── over/index.html              # About LuchtZorg & prototype disclaimer
+├── hollandse-luchten/index.html # About the Hollandse Luchten citizen-science network
 ├── tools/index.html             # Directory of related Dutch air-quality apps & open portals
 ├── contact/index.html           # Contact, GitHub & open API links
-├── presentation.html            # Responsive 4-slide jury pitch deck
-├── app.css, styles.css          # LuchtZorg design system & responsive mobile styles
+├── presentation.html            # Responsive 4-slide jury pitch deck (desktop + mobile + print-to-PDF)
+├── app.css, styles.css          # LuchtZorg design system & mobile-first responsive styles
 └── js/
-    ├── nav.js                   # Shared LuchtZorg AppBar, native Popover hamburger menu & NL/EN switcher
+    ├── nav.js                   # Shared AppBar, 2-tab switcher, native <dialog> drawer, NL/EN toggle & footer disclaimer
     ├── api.js                   # Backend client + typed `audit` & `considerations` translator
-    ├── address.js               # Address lookup (PDOK), backend bundle (/pm25, /compare, /timeseries, /trend, /events)
+    ├── address.js               # Address lookup (PDOK), live backend bundle & offline fallback
     ├── address-page.js          # UI controller for index.html
     ├── chat.js                  # UI controller for /gesprek/
     ├── real-data.js             # Embedded snapshot of reference data (offline fallback)
-    ├── mock-data.js, analysis.js, charts.js  # Helpers and SVG/Canvas charts
+    ├── mock-data.js, analysis.js, charts.js  # Helpers and SVG charts
     └── i18n.js                  # Auto-detected NL/EN bilingual state (persisted in localStorage)
 ```
 
-The pages show what the backend returns instead of computing it: audit steps are read by `code`
-(`request`, `select_stations`, `r_functions`, ...), and the notes shown with a result are the API's
-`considerations` (level, origin and message). Norms and the selectable date range come from `/guidelines` and
-`/coverage`. The offline fallback (embedded data) is only used when no backend answers, and the page says so.
-
 ---
 
-## 4. Regenerating `js/real-data.js` (Optional)
+## 4. Deploying to Firebase Hosting
 
-`frontend/js/real-data.js` is already committed to Git, so you do **not** need to regenerate it to run the frontend.
-If the Parquet dataset in `HackathonHollandseLuchten/data/` changes, you can regenerate `js/real-data.js` using Python + DuckDB:
-
-```bash
-cd backend
-.venv/bin/python -c "
-import duckdb, json, csv
-# Queries reference_measurements.parquet (value < 100, count >= 18/day)
-# and writes window.REAL_DATA to ../frontend/js/real-data.js
-"
-```
-
----
-
-## 5. Deploying to Firebase Hosting
-
-The public live demo is hosted on Firebase Hosting at:
-
-- **Address Check**: [https://luchtzorg.web.app/](https://luchtzorg.web.app/) (or `/adres.html`)
-- **Conversational Analyst**: [https://luchtzorg.web.app/gesprek/](https://luchtzorg.web.app/gesprek/)
+The public live prototype is hosted on Firebase Hosting at:
+- **Check my spot**: [https://luchtzorg.web.app/](https://luchtzorg.web.app/)
+- **Ask a question**: [https://luchtzorg.web.app/gesprek/](https://luchtzorg.web.app/gesprek/)
 - **Pitch Deck**: [https://luchtzorg.web.app/presentation.html](https://luchtzorg.web.app/presentation.html)
 
-### First-Time Setup (Once per Laptop)
-
-Log in with the Google account that has **Editor** permissions on the Firebase project:
+From the root of `hollandseluchten`, run:
 
 ```bash
-npx -y firebase-tools@latest login
+npx -y firebase-tools@latest deploy --only hosting
 ```
-
-### Deploy Frontend Changes
-
-From the root of the `hollandseluchten` repository (where `firebase.json` and `.firebaserc` live), run:
-
-```bash
-npx -y firebase-tools@latest deploy --only hosting --project sample-bumps-firebase-ai-app
-```
-
-_(Or simply `npx -y firebase-tools@latest deploy --only hosting` after pulling `.firebaserc`.)_

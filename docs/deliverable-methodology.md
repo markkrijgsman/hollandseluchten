@@ -4,17 +4,17 @@
 
 Residents in Noord-Holland ask concrete, personal questions about their air quality (*"Hoe verhoudt het fijnstof in Zaandam zich tot de WHO-norm?"*, *"Is de lucht op doordeweekse dagen slechter dan in het weekend?"*). Existing expert portals such as the [Samen Analyseren Tool](https://analyseren.samenmeten.nl/) and [Luchtmeetnet](https://www.luchtmeetnet.nl/) expose powerful data, but require residents to make specialist methodological decisions: choosing between raw and calibrated streams, selecting station IDs, setting outlier cutoffs, handling missing hours, and interpreting sensor uncertainty.
 
-**LuchtZorg** bridges this gap through two design principles:
-1. **Zero-Hallucination Separation of Duties**: Language models translate resident questions and explain outcomes in everyday language, but **never compute, estimate, or recall air-quality numbers**. Every number comes from deterministic, auditable tools backed by RIVM’s validated *Samen Analyseren* R functions.
-2. **Epistemic Honesty by Construction**: Every analytical response carries (a) a typed, step-by-step **audit trail** (`audit`), (b) dynamic **considerations** (`considerations`) derived from what actually happened in that run, with explicit provenance (`origin`: `analyse-together`, `this-api`, or `config`), and (c) a deterministic **reproduction URL** (`reproduce`) that reruns the exact calculation.
+**LuchtZorg** is an open-source **hackathon prototype** that bridges this gap through two design principles:
+1. **Deterministic Separation of Duties**: Language models translate resident questions and explain outcomes in everyday language, while **never performing arithmetic, estimating, or recalling air-quality numbers**. Every number comes from deterministic, auditable tools backed by RIVM’s *Samen Analyseren* R functions.
+2. **Epistemic Honesty by Construction**: Every analytical response carries (a) a typed, step-by-step **audit trail** (`audit`), (b) dynamic **considerations** (`considerations`) derived from what actually happened in that run, with explicit provenance (`origin`: `analyse-together`, `this-api`, or `config`), and (c) a deterministic **reproduction URL** (`reproduce`) that reruns the exact calculation. Because low-cost optical citizen sensors carry higher uncertainty than official monitors, all estimates are explicitly framed as **indicative community context** rather than medical advice or statutory legal compliance.
 
 ---
 
 ## 2. System & Conversational Architecture
 
 ### Dual Resident Entry Points
-- **Address Check (`/` and `/adres.html`)**: One-click postcode/street lookup via the Dutch government’s **PDOK Locatieserver**, presenting an immediate plain-language verdict against WHO/EU guidelines with progressive-disclosure drawers for station maps, time-series charts, methodological considerations, and the full audit table.
-- **Conversational Analyst (`/gesprek/` -> `POST /chat`)**: Multi-turn natural-language dialogue powered by a stateless LangChain/LangGraph tool-calling agent (`backend/app/chat/engine.py`, supporting OpenAI `gpt-4o` and Google `gemini-2.5-flash` at `temperature=0`).
+- **Address Check (`/`)**: One-click postcode/street lookup via the Dutch government’s **PDOK Locatieserver**, presenting an immediate plain-language verdict against WHO/EU guidelines with progressive-disclosure drawers for station maps, time-series charts, methodological considerations, and the full audit table.
+- **Conversational Analyst (`/gesprek/` -> `POST /chat`)**: Multi-turn natural-language dialogue powered by a stateless LangChain/LangGraph tool-calling agent (`backend/app/chat/engine.py`, supporting OpenAI `gpt-4o` and Google `gemini-3.5-flash-lite` at `temperature=0`).
 
 ### Shared Tool Registry (REST = Chat)
 All nine analytical tools in `backend/app/tools/registry.py` power **both** the public REST endpoints and the `/chat` LLM agent through the exact same execution path:
@@ -69,7 +69,7 @@ Where *Samen Analyseren* operates on user-selected station groups, residents nat
 - Without this gate, a sensor that drops offline overnight or during humid morning rush hours produces a severely biased "daily average". Excluded station-periods are logged in `station_means` and surfaced via `sparse_stations_left_out`.
 
 ### 4.3 Inverse-Distance Squared ($1/d^2$) Weighting with a $0.5\text{ km}$ Floor
-For all valid stations of a given `kind` within `radius_km` (default `5 km` in API/chat queries; `15 km` in the neighborhood address dashboard), weights are computed via Haversine distance $d_i$:
+For all valid stations of a given `kind` within `radius_km` (default `5 km` neighbourhood-first in both the API/chat tools and the address dashboard, automatically expanding to `15 km` and `25 km` in sparser rural areas without nearby stations), weights are computed via Haversine distance $d_i$:
 $$w_i = \frac{1}{\max(d_i,\; 0.5\text{ km})^2}, \qquad s_i = \frac{w_i}{\sum_{j} w_j}, \qquad \hat{y} = \sum_i s_i \bar{y}_i$$
 - **Why $1/d^2$?** PM2.5 has a smooth regional background plus localized gradients near roads, waterways, or residential wood-burning pockets; inverse-squared distance prioritizes local stations while retaining neighborhood context.
 - **Why the $0.5\text{ km}$ distance floor (`MIN_DISTANCE_KM = 0.5`)?** Directly operationalizes the citizen-science principle *"One sensor is no sensor"*. Without a floor, a single sensor 15 meters from the queried coordinate receives $> 99.9\%$ of the weight, allowing one faulty kit or a neighbor’s barbecue/chimney to dominate an entire neighborhood verdict even when three other sensors sit 400 meters away.

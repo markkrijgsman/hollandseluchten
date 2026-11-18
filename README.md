@@ -1,6 +1,6 @@
 # LuchtZorg — Hollandse Luchten Hackathon (Challenge 3)
 
-> **For people who care for their air** — Helping residents of Noord-Holland explore, question, and understand local PM2.5 air quality in everyday language, backed by RIVM’s validated *Samen Analyseren* R functions and a complete, reproducible audit trail.
+> **For people who care for their air** — An open-source Hollandse Luchten Hackathon prototype helping residents and *meetgroepen* explore, question, and understand local PM2.5 air quality in everyday language, powered by RIVM’s *Samen Analyseren* R functions, a complete audit trail, and honest uncertainty caveats *(indicative insights — not medical advice or statutory legal assessment)*.
 
 - **Live Web App (Address Check)**: [https://luchtzorg.web.app/](https://luchtzorg.web.app/)
 - **Live Conversational Analyst (`/gesprek/`)**: [https://luchtzorg.web.app/gesprek/](https://luchtzorg.web.app/gesprek/)
@@ -124,9 +124,9 @@ hollandseluchten/
 └── docs/                       # Hackathon deliverables, presentation PDF & validation metrics
 ```
 
-Key architectural guarantees (detailed in [`docs/deliverable-methodology.md`](docs/deliverable-methodology.md)):
-- **Zero Numerical Hallucinations**: In `POST /chat`, the LLM only selects typed tools and summarizes tool outputs; every PM2.5 concentration, exceedance count, trend slope, and uncertainty bound is computed deterministically by the backend and returned alongside `interpretation` (every tool call) and `reproduce` URLs.
-- **Validated RIVM Science at Runtime**: `backend/r/analysis.R` sources `funs/data_to_tool_fun.R` directly from a sibling checkout of RIVM’s GPL-3 [`Analyse-Together`](https://github.com/rivm-syso/Analyse-Together) repository (`add_ref_kal`, `< 100 µg/m³` outlier cut-off, `add_uncertainty_sensor_percent` with $\max(20\%, 5.3\text{ }\mu\text{g/m}^3)$) and logs the exact Git commit in every response’s `versions` audit step.
+Key architectural principles (detailed in [`docs/deliverable-methodology.md`](docs/deliverable-methodology.md)):
+- **Deterministic Tool Separation**: In `POST /chat`, the LLM only selects typed tools and summarizes tool outputs; every PM2.5 concentration, exceedance count, trend slope, and uncertainty bound is computed deterministically by the backend and returned alongside `interpretation` (every tool call) and `reproduce` URLs.
+- **Open RIVM R Functions at Runtime**: `backend/r/analysis.R` sources `funs/data_to_tool_fun.R` directly from a sibling checkout of RIVM’s GPL-3 [`Analyse-Together`](https://github.com/rivm-syso/Analyse-Together) repository (`add_ref_kal`, `< 100 µg/m³` outlier cut-off, `add_uncertainty_sensor_percent` with $\max(20\%, 5.3\text{ }\mu\text{g/m}^3)$) and logs the exact Git commit in every response’s `versions` audit step.
 - **Explicit Provenance (`origin`)**: Every dynamic caveat in `considerations` states whether the underlying rule comes from `analyse-together`, `this-api` (our own spatial/completeness thresholds), or `config` (WHO/EU norm definitions).
 
 ---
@@ -137,7 +137,7 @@ In accordance with the Challenge 3 guidelines on transparent disclosure of gener
 
 1. **Runtime AI inside LuchtZorg (`POST /chat` only)**:
    - **Where used**: Translating natural-language resident questions (Dutch/English) into structured tool calls (`geocode`, `stations`, `pm25`, `pm25_compare`, `pm25_weekday`, `pm25_trend`, `pm25_events`, `pm25_timeseries`) and phrasing the tool’s structured JSON output and `caution`/`warning` considerations in accessible language (`temperature=0`, via OpenAI `gpt-4o` or Google `gemini-3.5-flash-lite` / `gemini-3.8-flash`).
-   - **Where NOT used**: The LLM never performs arithmetic, data filtering, outlier removal, calibration, spatial interpolation, or norm comparison. The Address Check interface (`/` and `/adres.html`) and all `GET` REST endpoints run **100% deterministically with zero LLM involvement**.
+   - **Where NOT used**: The LLM never performs arithmetic, data filtering, outlier removal, calibration, spatial interpolation, or norm comparison. The Address Check interface (`/`) and all `GET` REST endpoints run **100% deterministically with zero LLM involvement**.
 2. **Development-Time AI Coding Assistants**:
    - **Where used**: AI coding assistants (Claude Code / Google Antigravity) were used during the hackathon to accelerate FastAPI boilerplate, vanilla HTML/CSS/Canvas frontend UI and pitch-deck layout, Docker/Cloud Run configuration, and markdown documentation structuring.
    - **Human design & verification**: Problem framing, architectural separation between LLM tool-calling and deterministic R execution, direct GPL-3 runtime sourcing of RIVM’s `Analyse-Together` R functions, the $1/d^2$ ($0.5\text{ km}$ floor) weighting and conservative correlated-uncertainty formulation, the 26 declarative consideration rules, the 7 automated `pytest` suites, and the quantitative Leave-One-Out / co-location validation benchmarks against Luchtmeetnet stations were designed, audited, and empirically verified by the team.
