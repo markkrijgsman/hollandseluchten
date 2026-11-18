@@ -4,6 +4,13 @@
       "site": "luchtzorg",
       "public": "frontend",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "redirects": [
+        {
+          "source": "/LuchtZorg_Challenge3_Submission.zip",
+          "destination": "https://storage.googleapis.com/luchtzorg-submission/LuchtZorg_Challenge3_Submission.zip",
+          "type": 302
+        }
+      ],
       "headers": [
         {
           "source": "**/*.@(html|css|js)",
@@ -15,6 +22,13 @@
       "site": "hollandse-luchten-analyse",
       "public": "frontend",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "redirects": [
+        {
+          "source": "/LuchtZorg_Challenge3_Submission.zip",
+          "destination": "https://storage.googleapis.com/luchtzorg-submission/LuchtZorg_Challenge3_Submission.zip",
+          "type": 302
+        }
+      ],
       "headers": [
         {
           "source": "**/*.@(html|css|js)",
@@ -26,6 +40,13 @@
       "site": "sample-bumps-firebase-ai-app",
       "public": "frontend",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "redirects": [
+        {
+          "source": "/LuchtZorg_Challenge3_Submission.zip",
+          "destination": "https://storage.googleapis.com/luchtzorg-submission/LuchtZorg_Challenge3_Submission.zip",
+          "type": 302
+        }
+      ],
       "headers": [
         {
           "source": "**/*.@(html|css|js)",
