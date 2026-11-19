@@ -1,4 +1,6 @@
 """Facade over the analyses. Each method builds one response; the work is done by the modules it composes."""
+import copy
+import threading
 from datetime import date as Date
 from functools import cached_property
 
@@ -69,6 +71,9 @@ class Pm25Service:
         self.rules = load_rules()
         self._pipeline = Pipeline(ObservationLoader(settings, self.reference, self.sensors))
         self._catalog = Catalog(self.reference, self.sensors)
+        self._series_cache: dict[tuple, tuple] = {}
+        self._series_locks_guard = threading.Lock()
+        self._series_locks: dict[tuple, threading.Lock] = {}
 
     @cached_property
     def versions(self) -> dict:
@@ -106,22 +111,40 @@ class Pm25Service:
                 radius_km: float, cutoff: float, min_hours: int
                 ) -> tuple[list[SeriesPoint], SeriesSummary, dict]:
         """Series, summary and the run's facts (the audit's closing 'versions' step is added by the caller)."""
-        res = RESOLUTIONS[resolution]
-        audit.log(RequestStep(lat=lat, lon=lon, start=start.isoformat(), end=end.isoformat(), resolution=resolution,
-                              radius_km=radius_km, outlier_cutoff=cutoff,
-                              min_hours_per_station=res.required_hours(min_hours), day_definition=DAY_DEFINITION))
-        result = self._pipeline.run(audit, lat, lon, start, end, resolution, radius_km, cutoff, min_hours)
+        key = (round(lat, 5), round(lon, 5), start, end, resolution, radius_km, cutoff, min_hours)
+        with self._series_locks_guard:
+            lock = self._series_locks.setdefault(key, threading.Lock())
+        with lock:
+            cached = self._series_cache.get(key)
+            if cached is not None:
+                c_steps, c_series, c_summary, c_facts = cached
+                for st in c_steps:
+                    audit.log(copy.deepcopy(st))
+                return copy.deepcopy(c_series), copy.deepcopy(c_summary), copy.deepcopy(c_facts)
 
-        series = [SeriesPoint(time=period, pm25=round(float(r["pm25"]), 2), uncertainty=round(float(r["uncertainty"]), 2),
-                              basis=BASIS[r["kind"]], stations_used=int(r["stations"]))
-                  for period, r in result.chosen.iterrows()]
-        values = [p.pm25 for p in series]
-        expected = res.expected_periods(start, end)
-        audit.log(WeightedMeanStep(action="distance-weighted mean per period", weights=WEIGHT_FORMULA,
-                                   periods=result.facts["periods"], periods_from_sensors=result.facts["sensor_periods"]))
-        summary = SeriesSummary(periods_with_data=len(series), periods_expected=expected,
-                                mean=round(sum(values) / len(values), 2), min=min(values), max=max(values))
-        return series, summary, result.facts
+            sub_audit = AuditLog()
+            res = RESOLUTIONS[resolution]
+            sub_audit.log(RequestStep(lat=lat, lon=lon, start=start.isoformat(), end=end.isoformat(), resolution=resolution,
+                                      radius_km=radius_km, outlier_cutoff=cutoff,
+                                      min_hours_per_station=res.required_hours(min_hours), day_definition=DAY_DEFINITION))
+            result = self._pipeline.run(sub_audit, lat, lon, start, end, resolution, radius_km, cutoff, min_hours)
+
+            series = [SeriesPoint(time=period, pm25=round(float(r["pm25"]), 2), uncertainty=round(float(r["uncertainty"]), 2),
+                                  basis=BASIS[r["kind"]], stations_used=int(r["stations"]))
+                      for period, r in result.chosen.iterrows()]
+            values = [p.pm25 for p in series]
+            expected = res.expected_periods(start, end)
+            sub_audit.log(WeightedMeanStep(action="distance-weighted mean per period", weights=WEIGHT_FORMULA,
+                                           periods=result.facts["periods"], periods_from_sensors=result.facts["sensor_periods"]))
+            summary = SeriesSummary(periods_with_data=len(series), periods_expected=expected,
+                                    mean=round(sum(values) / len(values), 2), min=min(values), max=max(values))
+            if len(self._series_cache) >= 256:
+                self._series_cache.pop(next(iter(self._series_cache)), None)
+            self._series_cache[key] = (copy.deepcopy(sub_audit.steps), copy.deepcopy(series),
+                                       copy.deepcopy(summary), copy.deepcopy(result.facts))
+            for st in sub_audit.steps:
+                audit.log(st)
+            return series, summary, result.facts
 
     def timeseries(self, lat: float, lon: float, start: Date, end: Date, resolution: str = "day",
                    radius_km: float = 5.0, cutoff: float = 100.0, min_hours: int = 18) -> TimeseriesResponse:

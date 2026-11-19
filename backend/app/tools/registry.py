@@ -1,4 +1,5 @@
 """The analyses as callable tools. Used by the REST endpoints and by the chat layer (same code path)."""
+import copy
 from collections.abc import Callable
 from dataclasses import dataclass
 from urllib.parse import urlencode
@@ -89,18 +90,33 @@ TOOLS: dict[str, Tool] = {t.name: t for t in [
 ]}
 
 
+MAX_RESPONSE_CACHE = 512
+
+
 def execute(service: Pm25Service, tool: Tool, params: BaseModel) -> dict:
     """Run a tool and return its response as a JSON-ready dict.
 
     The response gets `request` (resolved parameters) and `reproduce` (a URL that reruns it).
     """
+    request = params.model_dump(by_alias=True, mode="json")
+    reproduce = f"{tool.path}?{urlencode(request)}" if request else tool.path
+    cache: dict[str, dict] | None = getattr(service, "_response_cache", None)
+    if cache is None and service is not None:
+        cache = {}
+        service._response_cache = cache
+    if cache is not None and reproduce in cache:
+        return copy.deepcopy(cache[reproduce])
+
     try:
         result = tool.run(service, params)
     except NoDataError as exc:
         raise ToolError(404, {"message": str(exc), "audit": exc.audit}) from exc
     except (RError, GeocodeError) as exc:
         raise ToolError(503, str(exc)) from exc
-    request = params.model_dump(by_alias=True, mode="json")
-    result = result.model_copy(update={
-        "request": request, "reproduce": f"{tool.path}?{urlencode(request)}" if request else tool.path})
-    return result.model_dump(by_alias=True, mode="json")
+    result = result.model_copy(update={"request": request, "reproduce": reproduce})
+    out = result.model_dump(by_alias=True, mode="json")
+    if cache is not None and tool.name != "geocode":
+        if len(cache) >= MAX_RESPONSE_CACHE:
+            cache.pop(next(iter(cache)), None)
+        cache[reproduce] = copy.deepcopy(out)
+    return out

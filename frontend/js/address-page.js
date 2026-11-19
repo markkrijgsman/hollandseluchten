@@ -1216,7 +1216,10 @@
           geolocation_unsupported: t("Je browser ondersteunt geen locatiebepaling. Vul hierboven je postcode in.", "Your browser does not support geolocation. Enter your postcode above."),
           geolocation_denied: t("Toegang tot je locatie is geweigerd. Geef toestemming in je browser of vul je postcode in.", "Location access was denied. Grant permission in your browser or enter your postcode."),
           geolocation_timeout: t("Het bepalen van je locatie duurde te lang. Probeer het opnieuw of vul je postcode in.", "Determining your location timed out. Try again or enter your postcode."),
-          geolocation_unavailable: t("Je locatie kon niet worden bepaald. Vul hierboven je postcode in.", "Your location could not be determined. Enter your postcode above."),
+          geolocation_unavailable: t(
+            "Je locatie kon niet worden bepaald (controleer of Locatievoorzieningen voor je browser aan staan, klik op de kaart, of vul je postcode in).",
+            "Your location could not be determined (check that OS Location Services are enabled for your browser, click the map, or enter your postcode)."
+          ),
         }[res.error]
       );
       return;

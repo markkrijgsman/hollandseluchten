@@ -203,32 +203,38 @@
     };
   }
 
-  function locate() {
-    return new Promise((resolve) => {
-      if (!("geolocation" in navigator)) {
-        resolve({ error: "geolocation_unsupported" });
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          const place = await reverseGeocode(lat, lon);
-          resolve({
-            postcode: place.postcode || "",
-            house: { number: "", letter: "" },
-            place,
-            fromGeolocation: true,
-            accuracyM: Math.round(pos.coords.accuracy || 0),
-          });
-        },
-        (err) => {
-          const codeMap = { 1: "geolocation_denied", 2: "geolocation_unavailable", 3: "geolocation_timeout" };
-          resolve({ error: codeMap[err && err.code] || "geolocation_unavailable" });
-        },
-        { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
-      );
+  function getPosition(options) {
+    return new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, options);
     });
+  }
+
+  async function locate() {
+    if (!("geolocation" in navigator)) {
+      return { error: "geolocation_unsupported" };
+    }
+    try {
+      let pos;
+      try {
+        pos = await getPosition({ enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 });
+      } catch (firstErr) {
+        if (firstErr && firstErr.code === 1) throw firstErr;
+        pos = await getPosition({ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+      }
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const place = await reverseGeocode(lat, lon);
+      return {
+        postcode: place.postcode || "",
+        house: { number: "", letter: "" },
+        place,
+        fromGeolocation: true,
+        accuracyM: Math.round(pos.coords.accuracy || 0),
+      };
+    } catch (err) {
+      const codeMap = { 1: "geolocation_denied", 2: "geolocation_unavailable", 3: "geolocation_timeout" };
+      return { error: codeMap[err && err.code] || "geolocation_unavailable" };
+    }
   }
 
   function computeRealDataTimeseries(lat, lon, endDate, periodKey = "month", radiusKm = 15) {
